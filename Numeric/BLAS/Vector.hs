@@ -8,6 +8,7 @@
 module Numeric.BLAS.Vector ( 
     Vector
   , stride
+  , unsafeWithVector
   ) where
 
 import Control.Monad.Primitive
@@ -18,12 +19,14 @@ import Data.Vector.Storable.Internal
 import qualified Data.Vector.Generic as G
 
 import Foreign.Marshal.Array ( advancePtr )
+import Foreign.Ptr
 import Foreign.ForeignPtr
 import Foreign.Storable
 
-import Text.Read             ( Read(..), readListPrecDefault )
+import Text.Read                   (Read(..), readListPrecDefault)
 
-import Numeric.BLAS.Vector.Mutable
+import Numeric.BLAS.Vector.Mutable (MVector(..))
+
 
 
 ----------------------------------------------------------------
@@ -39,6 +42,13 @@ data Vector a = Vector {-# UNPACK #-} !Int -- Length
 -- | Vector stride
 stride :: Vector a -> Int
 stride (Vector _ s _) = s
+
+-- | Apply action to vector content
+unsafeWithVector :: Vector a -> (Int -> Int -> Ptr a -> IO b) -> IO b
+unsafeWithVector (Vector n s fp) f
+  = withForeignPtr fp $ f n s
+{-# INLINE unsafeWithVector #-}
+  
 
 type instance G.Mutable Vector = MVector
 
