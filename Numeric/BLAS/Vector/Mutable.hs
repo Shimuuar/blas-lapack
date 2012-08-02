@@ -7,6 +7,7 @@
 -- created using vector APi stride is set to 1.
 module Numeric.BLAS.Vector.Mutable ( 
     MVector(..)
+  , stride
   ) where
 
 import Control.Monad.Primitive
@@ -32,6 +33,11 @@ data MVector s a = MVector {-# UNPACK #-} !Int -- Length
                            {-# UNPACK #-} !Int -- Stride
                            {-# UNPACK #-} !(ForeignPtr a)
                  deriving ( Typeable )
+
+-- | Vector stride
+stride :: MVector s a -> Int
+stride (MVector _ s _) = s
+
 
 instance Storable a => M.MVector MVector a where
   {-# INLINE basicLength #-}
