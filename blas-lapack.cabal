@@ -1,0 +1,30 @@
+Name:           blas-lapack
+Version:        0.1
+Synopsis:       High level binding to BLAS and LAPACK
+Description:
+  High level binding to BLAS and LAPACK
+
+Cabal-Version:  >= 1.6
+License:        BSD3
+License-File:   LICENSE
+Author:         Aleksey Khudyakov <alexey.skladnoy@gmail.com>
+Maintainer:     Aleksey Khudyakov <alexey.skladnoy@gmail.com>
+Homepage:       http://bitbucket.org/Shimuuar/blas-lapack
+Category:       Math,Numeric
+Build-Type:     Simple
+
+source-repository head
+  type:     hg
+  location: http://bitbucket.org/Shimuuar/blas-lapack
+
+Library
+  Ghc-options:
+    -Wall
+  Build-Depends:
+    base >=3 && <5,
+    deepseq,
+    primitive,
+    vector
+  Exposed-modules:      
+    Numeric.BLAS.Vector
+    Numeric.BLAS.Vector.Mutable
