@@ -26,5 +26,6 @@ Library
     primitive,
     vector
   Exposed-modules:      
+    Numeric.BLAS
     Numeric.BLAS.Vector
     Numeric.BLAS.Vector.Mutable
