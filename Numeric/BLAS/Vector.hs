@@ -9,6 +9,7 @@ module Numeric.BLAS.Vector (
     Vector
   , stride
   , unsafeWithVector
+  , unsafeWithMVector
   ) where
 
 import Control.Monad.Primitive
@@ -42,13 +43,19 @@ data Vector a = Vector {-# UNPACK #-} !Int -- Length
 -- | Vector stride
 stride :: Vector a -> Int
 stride (Vector _ s _) = s
+{-# INLINE stride #-}
 
 -- | Apply action to vector content
 unsafeWithVector :: Vector a -> (Int -> Int -> Ptr a -> IO b) -> IO b
+{-# INLINE unsafeWithVector #-}
 unsafeWithVector (Vector n s fp) f
   = withForeignPtr fp $ f n s
-{-# INLINE unsafeWithVector #-}
-  
+
+-- | Apply action to vector. Vector content must not be modified
+unsafeWithMVector :: PrimMonad m => Vector a -> (MVector (PrimState m) a -> m b) -> m b
+{-# INLINE unsafeWithMVector #-}
+unsafeWithMVector (Vector n s fp) f
+  = f (MVector n s fp)
 
 type instance G.Mutable Vector = MVector
 
