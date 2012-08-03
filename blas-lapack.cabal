@@ -24,8 +24,13 @@ Library
     base >=3 && <5,
     deepseq,
     primitive,
-    vector
+    vector,
+    blas-lapack-bindings
   Exposed-modules:      
     Numeric.BLAS
+    Numeric.BLAS.Mutable
+    -- Data structures
     Numeric.BLAS.Vector
     Numeric.BLAS.Vector.Mutable
+  Other-modules:
+    Numeric.BLAS.Internal
