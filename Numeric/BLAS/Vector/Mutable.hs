@@ -21,7 +21,8 @@ import Foreign.Marshal.Array ( advancePtr )
 import Foreign.ForeignPtr
 import Foreign.Storable
 
-import GHC.ForeignPtr        ( mallocPlainForeignPtrBytes )
+import Numeric.BLAS.Internal
+
 
 
 ----------------------------------------------------------------
@@ -89,15 +90,6 @@ instance Storable a => M.MVector MVector a where
 ----------------------------------------------------------------
 -- Storable vector internals
 ----------------------------------------------------------------
-
-
-mallocVector :: Storable a => Int -> IO (ForeignPtr a)
-{-# INLINE mallocVector #-}
-mallocVector 
-  = doMalloc undefined
-  where
-    doMalloc :: Storable b => b -> Int -> IO (ForeignPtr b)
-    doMalloc dummy size = mallocPlainForeignPtrBytes (size * sizeOf dummy)
 
 -- Copy vector with stride
 copyArrayStride :: Storable a 
