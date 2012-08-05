@@ -27,11 +27,16 @@ Library
     vector,
     blas-lapack-bindings
   Exposed-modules:      
+    -- High level BLAS interface
     Numeric.BLAS
     Numeric.BLAS.Mutable
-    -- Data structures
+    -- Vector
     Numeric.BLAS.Vector
     Numeric.BLAS.Vector.Mutable
+    -- Matrix API
+    Numeric.BLAS.Matrix
+    Numeric.BLAS.Matrix.Mutable
+    -- Concrete matrices
     Numeric.BLAS.Matrix.Dense
     Numeric.BLAS.Matrix.Dense.Mutable
   Other-modules:
