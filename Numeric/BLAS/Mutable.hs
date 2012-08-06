@@ -16,6 +16,7 @@ module Numeric.BLAS.Mutable (
     -- ** Vector transformations
   , scaleVector
   , addVecScaled
+    -- * Level 2 BLAS
   ) where
 
 import Control.Monad.Primitive
@@ -25,7 +26,7 @@ import Foreign.Ptr
 import Foreign.ForeignPtr
 
 import qualified Numeric.BLAS.Bindings as BLAS
-import           Numeric.BLAS.Bindings   (BLAS1,BLAS2,BLAS3)
+import           Numeric.BLAS.Bindings   (BLAS1,BLAS2,BLAS3,RealType)
 
 import qualified Data.Vector.Storable  as S
 import Numeric.BLAS.Vector.Mutable
@@ -106,7 +107,7 @@ hermitianProd = twoVecOp BLAS.dotc
 -- | Calculate vector norm
 vectorNorm :: (PrimMonad m, BLAS1 a)
            => MVector (PrimState m) a
-           -> m Double
+           -> m (RealType a)
 {-# INLINE vectorNorm #-}
 vectorNorm = oneVecOp BLAS.nrm2
 
@@ -114,7 +115,7 @@ vectorNorm = oneVecOp BLAS.nrm2
 -- | Sum of absolute values of vector
 absSum :: (PrimMonad m, BLAS1 a)
        => MVector (PrimState m) a
-       -> m Double
+       -> m (RealType a)
 {-# INLINE absSum #-}
 absSum = oneVecOp BLAS.asum
 
@@ -155,6 +156,24 @@ addVecScaled a (MVector n s1 fp) (MVector m s2 fq)
                 withForeignPtr fq $ \q ->
                   BLAS.axpy n a p s1 q s2
 
+
+
+----------------------------------------------------------------
+-- Level 2 BLAS
+----------------------------------------------------------------
+
+-- | Bindings for matrix vector multiplication routines provided by
+--   BLAS.
+--
+--   > y ← α·A·x + β·y
+class MultMV mat where
+  unsafeMultMV :: (PrimMonad m, MVectorBLAS v, BLAS2 a)
+               => RealType a          -- ^ /α/
+               -> mat (PrimState m) a -- ^ /A/
+               -> v   (PrimState m) a -- ^ /x/
+               -> RealType a          -- ^ /β/
+               -> v   (PrimState m) a -- ^ /y/
+               -> m ()
 
 
 ----------------------------------------------------------------
