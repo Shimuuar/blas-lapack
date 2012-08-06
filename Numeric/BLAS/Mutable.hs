@@ -1,3 +1,5 @@
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE FlexibleInstances     #-}
 -- |
 -- BLAS interface for mutable data structures
 module Numeric.BLAS.Mutable (
@@ -18,6 +20,7 @@ module Numeric.BLAS.Mutable (
   , addVecScaled
     -- * Level 2 BLAS
   , MultMV(..)
+  , multMV
   ) where
 
 import Control.Monad.Primitive
@@ -27,7 +30,9 @@ import Foreign.Ptr
 import Foreign.ForeignPtr
 
 import qualified Numeric.BLAS.Bindings as BLAS
-import           Numeric.BLAS.Bindings   (BLAS1,BLAS2,BLAS3,RealType)
+import           Numeric.BLAS.Bindings   (BLAS1,BLAS2,BLAS3,RealType,
+                                          RowOrder(..), Trans(..)
+                                         )
 
 import qualified Data.Vector.Storable              as S
 import qualified Numeric.BLAS.Vector.Mutable       as V
@@ -172,14 +177,44 @@ addVecScaled a v u
 --   BLAS.
 --
 --   > y ← α·A·x + β·y
-class MultMV mat where
+--
+-- FIXME: What to do with gemv's transposition?
+class M.IsMMatrix mat a => MultMV mat a where
   unsafeMultMV :: (PrimMonad m, MVectorBLAS v, BLAS2 a)
-               => RealType a          -- ^ /α/
+               => a                   -- ^ /α/
                -> mat (PrimState m) a -- ^ /A/
                -> v   (PrimState m) a -- ^ /x/
-               -> RealType a          -- ^ /β/
+               -> a                   -- ^ /β/
                -> v   (PrimState m) a -- ^ /y/
                -> m ()
+
+multMV ::(PrimMonad m, MultMV mat a, MVectorBLAS v, BLAS2 a)
+       => a                   -- ^ /α/
+       -> mat (PrimState m) a -- ^ /A/
+       -> v   (PrimState m) a -- ^ /x/
+       -> a                   -- ^ /β/
+       -> v   (PrimState m) a -- ^ /y/
+       -> m ()
+{-# INLINE multMV #-}
+multMV a m x b y
+  | blasLength x /= M.cols m = error "@@@ 1"
+  | blasLength y /= M.rows m = error "@@@ 2"
+  | otherwise                = unsafeMultMV a m x b y
+
+
+instance S.Storable a => MultMV MD.MMatrix a where
+  unsafeMultMV a (MD.MMatrix rows cols lda fp) x b y
+    | blasLength x /= cols = error "@@@ 1"
+    | blasLength y /= rows = error "@@@ 2"
+    | otherwise
+      = unsafePrimToPrim
+      $ withForeignPtr  fp          $ \pa ->
+        withForeignPtr (blasFPtr x) $ \px ->
+        withForeignPtr (blasFPtr y) $ \py ->
+          BLAS.gemv ColMajor NoTrans
+                    rows cols a pa lda
+                      px (blasStride y)
+                    b py (blasStride y)
 
 
 
