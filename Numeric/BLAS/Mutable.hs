@@ -27,7 +27,6 @@ module Numeric.BLAS.Mutable (
   ) where
 
 import Control.Monad.Primitive
-import Control.Monad.ST
 
 import Foreign.Ptr
 import Foreign.ForeignPtr
