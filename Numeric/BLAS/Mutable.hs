@@ -21,6 +21,9 @@ module Numeric.BLAS.Mutable (
     -- * Level 2 BLAS
   , MultMV(..)
   , multMV
+    -- * Level 3 BLAS
+  , unsafeMultMM
+  , multMM
   ) where
 
 import Control.Monad.Primitive
@@ -216,6 +219,63 @@ instance S.Storable a => MultMV MD.MMatrix a where
                       px (blasStride y)
                     b py (blasStride y)
 
+
+
+----------------------------------------------------------------
+-- Level 3 BLAS
+----------------------------------------------------------------
+
+-- | Unsafe multiplication of matrices:
+--
+-- > C ← α·op(A)·op(B) + β·C
+unsafeMultMM :: (PrimMonad m, BLAS3 a)
+             => a
+             -> Trans
+             -> MD.MMatrix (PrimState m) a
+             -> Trans
+             -> MD.MMatrix (PrimState m) a
+             -> a
+             -> MD.MMatrix (PrimState m) a
+             -> m ()
+{-# INLINE unsafeMultMM #-}
+unsafeMultMM a ta ma@(MD.MMatrix _ _ lda fpa) tb (MD.MMatrix _ _ ldb fpb) b (MD.MMatrix rows cols ldc fpc)
+  = unsafePrimToPrim
+  $ withForeignPtr fpa $ \pa ->
+    withForeignPtr fpb $ \pb ->
+    withForeignPtr fpc $ \pc ->
+      BLAS.gemm ColMajor ta tb
+                rows cols (colsT ta ma)
+                a pa lda pb ldb
+                b pc ldc
+
+-- | Unsafe multiplication of matrices:
+--
+-- > C ← α·op(A)·op(B) + β·C
+multMM :: (PrimMonad m, BLAS3 a)
+       => a
+       -> Trans
+       -> MD.MMatrix (PrimState m) a
+       -> Trans
+       -> MD.MMatrix (PrimState m) a
+       -> a
+       -> MD.MMatrix (PrimState m) a
+       -> m ()
+{-# INLINE multMM #-}
+multMM a ta ma tb mb b mc
+  | rowsT ta ma /= M.rows mc   = error "MM 1"
+  | colsT tb mb /= M.cols mc   = error "MM 2"
+  | colsT ta ma /= rowsT tb mb = error "MM 3"
+  | otherwise                  = unsafeMultMM a ta ma tb mb b mc
+
+colsT :: M.IsMMatrix mat a => Trans -> mat s a -> Int
+{-# INLINE colsT #-}
+colsT NoTrans m = M.cols m
+colsT _       m = M.rows m
+
+rowsT :: M.IsMMatrix mat a => Trans -> mat s a -> Int
+{-# INLINE rowsT #-}
+rowsT NoTrans m = M.rows m
+rowsT _       m = M.cols m
 
 
 ----------------------------------------------------------------
