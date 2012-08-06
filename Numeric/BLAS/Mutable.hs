@@ -17,6 +17,7 @@ module Numeric.BLAS.Mutable (
   , scaleVector
   , addVecScaled
     -- * Level 2 BLAS
+  , MultMV(..)
   ) where
 
 import Control.Monad.Primitive
@@ -28,9 +29,10 @@ import Foreign.ForeignPtr
 import qualified Numeric.BLAS.Bindings as BLAS
 import           Numeric.BLAS.Bindings   (BLAS1,BLAS2,BLAS3,RealType)
 
-import qualified Data.Vector.Storable  as S
-import Numeric.BLAS.Vector.Mutable
-import Numeric.BLAS.Internal
+import qualified Data.Vector.Storable              as S
+import qualified Numeric.BLAS.Vector.Mutable       as V
+import qualified Numeric.BLAS.Matrix.Mutable       as M
+import qualified Numeric.BLAS.Matrix.Dense.Mutable as MD
 
 
 
@@ -45,10 +47,10 @@ class MVectorBLAS v where
   blasFPtr   :: v s a -> ForeignPtr a
 
 -- | Strided vectors
-instance MVectorBLAS MVector where
-  blasLength (MVector n _ _) = n
-  blasStride (MVector _ s _) = s
-  blasFPtr   (MVector _ _ p) = p
+instance MVectorBLAS V.MVector where
+  blasLength (V.MVector n _ _) = n
+  blasStride (V.MVector _ s _) = s
+  blasFPtr   (V.MVector _ _ p) = p
   {-# INLINE blasLength #-}
   {-# INLINE blasStride #-}
   {-# INLINE blasFPtr   #-}
@@ -96,33 +98,33 @@ dotProduct = twoVecOp BLAS.dotu
 
 
 -- | Scalar product of vectors
-hermitianProd :: (PrimMonad m, BLAS1 a)
-              => MVector (PrimState m) a
-              -> MVector (PrimState m) a
+hermitianProd :: (PrimMonad m, BLAS1 a, MVectorBLAS v, MVectorBLAS u)
+              => v (PrimState m) a
+              -> u (PrimState m) a
               -> m a
 {-# INLINE hermitianProd #-}
 hermitianProd = twoVecOp BLAS.dotc
 
 
 -- | Calculate vector norm
-vectorNorm :: (PrimMonad m, BLAS1 a)
-           => MVector (PrimState m) a
+vectorNorm :: (PrimMonad m, BLAS1 a, MVectorBLAS v)
+           => v (PrimState m) a
            -> m (RealType a)
 {-# INLINE vectorNorm #-}
 vectorNorm = oneVecOp BLAS.nrm2
 
 
 -- | Sum of absolute values of vector
-absSum :: (PrimMonad m, BLAS1 a)
-       => MVector (PrimState m) a
+absSum :: (PrimMonad m, BLAS1 a, MVectorBLAS v)
+       => v (PrimState m) a
        -> m (RealType a)
 {-# INLINE absSum #-}
 absSum = oneVecOp BLAS.asum
 
 
 -- | Index f element with largest absolute value.
-absIndex :: (PrimMonad m, BLAS1 a)
-       => MVector (PrimState m) a
+absIndex :: (PrimMonad m, BLAS1 a, MVectorBLAS v)
+       => v (PrimState m) a
        -> m Int
 {-# INLINE absIndex #-}
 absIndex = oneVecOp BLAS.iamax
@@ -130,31 +132,35 @@ absIndex = oneVecOp BLAS.iamax
 
 -- | Scale all element of vector by some value. Vector is modified in
 --   place.
-scaleVector :: (PrimMonad m, BLAS1 a)
+scaleVector :: (PrimMonad m, BLAS1 a, MVectorBLAS v)
             => a
-            -> MVector (PrimState m) a
+            -> v (PrimState m) a
             -> m ()
 {-# INLINE scaleVector #-}
-scaleVector a (MVector n s fp)
+scaleVector a v
   = unsafePrimToPrim
-  $ withForeignPtr fp $ \p -> BLAS.scal n a p s
+  $ withForeignPtr (blasFPtr v) $ \p -> BLAS.scal (blasLength v) a p (blasStride v)
 
 
 -- | Add scaled vector to another. Target vector modified in place
 --
 -- > y ← α·x + y
-addVecScaled :: (PrimMonad m, BLAS1 a)
-             => a                       -- ^ /α/
-             -> MVector (PrimState m) a -- ^ /x/
-             -> MVector (PrimState m) a -- ^ /y/
+addVecScaled :: (PrimMonad m, BLAS1 a, MVectorBLAS v, MVectorBLAS u)
+             => a                 -- ^ /α/
+             -> v (PrimState m) a -- ^ /x/
+             -> u (PrimState m) a -- ^ /y/
              -> m ()
 {-# INLINE addVecScaled #-}
-addVecScaled a (MVector n s1 fp) (MVector m s2 fq)
+addVecScaled a v u
   | n /= m    = error "Numeric.BLAS.Mutable.addVecScaled: "
   | otherwise = unsafePrimToPrim
               $ withForeignPtr fp $ \p ->
                 withForeignPtr fq $ \q ->
                   BLAS.axpy n a p s1 q s2
+  where
+    n  = blasLength v ; m  = blasLength u
+    s1 = blasStride v ; s2 = blasStride u
+    fp = blasFPtr   v ; fq = blasFPtr   u
 
 
 
@@ -176,6 +182,7 @@ class MultMV mat where
                -> m ()
 
 
+
 ----------------------------------------------------------------
 -- Helpers
 ----------------------------------------------------------------
@@ -194,10 +201,8 @@ twoVecOp func v u
                   func n p (blasStride v)
                          q (blasStride u)
   where
-    n  = blasLength v
-    m  = blasLength u
-    fp = blasFPtr   v
-    fq = blasFPtr   u
+    n  = blasLength v  ; m  = blasLength u
+    fp = blasFPtr   v  ; fq = blasFPtr   u
 
 oneVecOp :: (PrimMonad m, MVectorBLAS v)
          => (Int -> Ptr a -> Int -> IO b)
