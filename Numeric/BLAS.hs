@@ -11,7 +11,7 @@ import Control.Monad.Primitive
 import Control.Monad.ST
 
 import qualified Numeric.BLAS.Bindings as BLAS
-import           Numeric.BLAS.Bindings   (BLAS1,BLAS2,BLAS3)
+import           Numeric.BLAS.Bindings   (BLAS1,BLAS2,BLAS3,RealType)
 
 import Numeric.BLAS.Vector
 import Numeric.BLAS.Internal
@@ -44,7 +44,7 @@ hermitianProd v w
 
 
 -- | Euqlidean norm of vector
-vectorNorm :: BLAS1 a => Vector a -> Double
+vectorNorm :: BLAS1 a => Vector a -> RealType a
 {-# INLINE vectorNorm #-}
 vectorNorm v
   = runST
@@ -52,7 +52,7 @@ vectorNorm v
 
 
 -- | Sum of absolute values of vector
-absSum :: BLAS1 a => Vector a -> Double
+absSum :: BLAS1 a => Vector a -> RealType a
 {-# INLINE absSum #-}
 absSum v
   = runST

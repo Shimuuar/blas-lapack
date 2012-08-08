@@ -1,7 +1,7 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE FlexibleInstances     #-}
 -- |
--- BLAS interface for mutable data structures
+-- BLAS interface for mutable data structures.
 module Numeric.BLAS.Mutable (
     -- * Type classes
     MVectorBLAS(..)
