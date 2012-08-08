@@ -25,7 +25,7 @@ Library
     deepseq,
     primitive,
     vector,
-    blas-lapack-bindings
+    blas-bindings
   Exposed-modules:      
     -- High level BLAS interface
     Numeric.BLAS
