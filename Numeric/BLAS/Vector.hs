@@ -5,11 +5,12 @@
 -- |
 -- Strided storable vectors. They support vector API. It they are
 -- created using vector APi stride is set to 1.
-module Numeric.BLAS.Vector ( 
+module Numeric.BLAS.Vector (
     Vector
   , stride
+    -- * Raw pointers
+  , unsafeFromForeignPtr
   , unsafeWithVector
-  , unsafeWithMVector
   ) where
 
 import Control.Monad.Primitive
@@ -45,18 +46,6 @@ stride :: Vector a -> Int
 stride (Vector _ s _) = s
 {-# INLINE stride #-}
 
--- | Apply action to vector content
-unsafeWithVector :: Vector a -> (Int -> Int -> Ptr a -> IO b) -> IO b
-{-# INLINE unsafeWithVector #-}
-unsafeWithVector (Vector n s fp) f
-  = withForeignPtr fp $ f n s
-
--- | Apply action to vector. Vector content must not be modified
-unsafeWithMVector :: PrimMonad m => Vector a -> (MVector (PrimState m) a -> m b) -> m b
-{-# INLINE unsafeWithMVector #-}
-unsafeWithMVector (Vector n s fp) f
-  = f (MVector n s fp)
-
 type instance G.Mutable Vector = MVector
 
 instance NFData (Vector a)
@@ -83,9 +72,32 @@ instance Storable a => G.Vector Vector a where
   basicUnsafeSlice i n (Vector _ s fp) = Vector n s $ updPtr (`advancePtr` (i*s)) fp
 
   {-# INLINE basicUnsafeIndexM #-}
-  basicUnsafeIndexM (Vector _ s fp) i 
-    = return                                    
+  basicUnsafeIndexM (Vector _ s fp) i
+    = return
     . unsafeInlineIO $ withForeignPtr fp $ \p -> peekElemOff p (i * s)
 
   {-# INLINE elemseq #-}
   elemseq _ = seq
+
+
+
+----------------------------------------------------------------
+-- Internals
+----------------------------------------------------------------
+
+-- | Create vector from raw pointer.
+unsafeFromForeignPtr :: Storable a
+                     => Int          -- ^ Length
+                     -> Int          -- ^ Stride
+                     -> ForeignPtr a -- ^ Pointer to data
+                     -> Vector a
+unsafeFromForeignPtr = Vector
+{-# INLINE unsafeFromForeignPtr #-}
+
+-- | apply action to vector content. Function is
+--
+-- > length -> stride -> poiner -> Result
+unsafeWithVector :: Vector a -> (Int -> Int -> Ptr a -> IO b) -> IO b
+{-# INLINE unsafeWithVector #-}
+unsafeWithVector (Vector n s fp) f
+  = withForeignPtr fp $ f n s
