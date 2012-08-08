@@ -213,7 +213,7 @@ multMV a m x b y
 --   BLAS. Matrix could be transposed of conhugated.
 --
 --   > y ← α·op(A)·x + β·y
-class M.IsMMatrix mat a => MultTMV mat a where
+class MultMV mat a => MultTMV mat a where
   unsafeMultTMV :: (PrimMonad m, MVectorBLAS v, BLAS2 a)
                  => a                   -- ^ /α/
                  -> Trans               -- ^ Matrix transformation
