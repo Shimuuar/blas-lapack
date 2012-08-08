@@ -21,6 +21,8 @@ module Numeric.BLAS.Mutable (
     -- * Level 2 BLAS
   , MultMV(..)
   , multMV
+  , MultTMV(..)
+  , multTMV
     -- * Level 3 BLAS
   , unsafeMultMM
   , multMM
@@ -179,8 +181,6 @@ addVecScaled a v u
 --   BLAS.
 --
 --   > y ← α·A·x + β·y
---
--- FIXME: What to do with gemv's transposition?
 class M.IsMMatrix mat a => MultMV mat a where
   unsafeMultMV :: (PrimMonad m, MVectorBLAS v, BLAS2 a)
                => a                   -- ^ /α/
@@ -190,6 +190,7 @@ class M.IsMMatrix mat a => MultMV mat a where
                -> v   (PrimState m) a -- ^ /y/
                -> m ()
 
+-- | Matrix vector multiplication which does range checking
 multMV ::(PrimMonad m, MultMV mat a, MVectorBLAS v, BLAS2 a)
        => a                   -- ^ /α/
        -> mat (PrimState m) a -- ^ /A/
@@ -204,19 +205,53 @@ multMV a m x b y
   | otherwise                = unsafeMultMV a m x b y
 
 
+
+-- | Bindings for matrix vector multiplication routines provided by
+--   BLAS. Matrix could be transposed of conhugated.
+--
+--   > y ← α·op(A)·x + β·y
+class M.IsMMatrix mat a => MultTMV mat a where
+  unsafeMultTMV :: (PrimMonad m, MVectorBLAS v, BLAS2 a)
+                 => a                   -- ^ /α/
+                 -> Trans               -- ^ Matrix transformation
+                 -> mat (PrimState m) a -- ^ /A/
+                 -> v   (PrimState m) a -- ^ /x/
+                 -> a                   -- ^ /β/
+                 -> v   (PrimState m) a -- ^ /y/
+                 -> m ()
+
+-- | Matrix vector multiplication which dows range checking
+multTMV ::(PrimMonad m, MultTMV mat a, MVectorBLAS v, BLAS2 a)
+        => a                   -- ^ /α/
+        -> Trans
+        -> mat (PrimState m) a -- ^ /A/
+        -> v   (PrimState m) a -- ^ /x/
+        -> a                   -- ^ /β/
+        -> v   (PrimState m) a -- ^ /y/
+        -> m ()
+{-# INLINE multTMV #-}
+multTMV a t m x b y
+  | blasLength x /= colsT t m = error "multTMV: 1"
+  | blasLength y /= rowsT t m = error "multTMV: 2"
+  | otherwise                 = unsafeMultTMV a t m x b y
+
+
+
 instance S.Storable a => MultMV MD.MMatrix a where
-  unsafeMultMV a (MD.MMatrix rows cols lda fp) x b y
-    | blasLength x /= cols = error "@@@ 1"
-    | blasLength y /= rows = error "@@@ 2"
-    | otherwise
-      = unsafePrimToPrim
-      $ withForeignPtr  fp          $ \pa ->
-        withForeignPtr (blasFPtr x) $ \px ->
-        withForeignPtr (blasFPtr y) $ \py ->
-          BLAS.gemv ColMajor NoTrans
-                    rows cols a pa lda
-                      px (blasStride y)
-                    b py (blasStride y)
+  unsafeMultMV a = unsafeMultTMV a NoTrans
+  {-# INLINE unsafeMultMV #-}
+
+instance S.Storable a => MultTMV MD.MMatrix a where
+  unsafeMultTMV a t (MD.MMatrix rows cols lda fp) x b y
+    = unsafePrimToPrim
+    $ withForeignPtr  fp          $ \pa ->
+      withForeignPtr (blasFPtr x) $ \px ->
+      withForeignPtr (blasFPtr y) $ \py ->
+        BLAS.gemv ColMajor t
+                  rows cols a pa lda
+                    px (blasStride y)
+                  b py (blasStride y)
+  {-# INLINE unsafeMultTMV #-}
 
 
 
