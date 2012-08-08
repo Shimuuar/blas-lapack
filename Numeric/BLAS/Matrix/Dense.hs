@@ -1,5 +1,7 @@
-{-# LANGUAGE TypeFamilies #-}
-{-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE TypeFamilies          #-}
+{-# LANGUAGE DeriveDataTypeable    #-}
 -- | Dense matrix
 module Numeric.BLAS.Matrix.Dense (
     -- * Matrix data type
@@ -19,6 +21,7 @@ import Foreign.ForeignPtr
 import Foreign.Storable
 
 import qualified Numeric.BLAS.Matrix.Dense.Mutable as M
+import Numeric.BLAS.Matrix
 
 ----------------------------------------------------------------
   
@@ -30,3 +33,10 @@ data Matrix a = Matrix {-# UNPACK #-} !Int -- N of rows
               deriving ( Typeable )
 
 type instance G.Mutable Matrix = M.MMatrix
+
+
+instance NFData (Matrix a)
+
+instance Storable a => IsMatrix Matrix a where
+  unsafeThaw   (Matrix    r c lda fp) = return $! M.MMatrix r c lda fp
+  unsafeFreeze (M.MMatrix r c lda fp) = return $! Matrix    r c lda fp
