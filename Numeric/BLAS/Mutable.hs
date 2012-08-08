@@ -2,6 +2,9 @@
 {-# LANGUAGE FlexibleInstances     #-}
 -- |
 -- BLAS interface for mutable data structures.
+--
+-- This is more or less direct mapping of BLAS operation onto mutable
+-- vectors and matrices. There is very little sugar on top of it.
 module Numeric.BLAS.Mutable (
     -- * Type classes
     MVectorBLAS(..)
@@ -310,6 +313,7 @@ rowsT :: M.IsMMatrix mat a => Trans -> mat s a -> Int
 {-# INLINE rowsT #-}
 rowsT NoTrans m = M.rows m
 rowsT _       m = M.cols m
+
 
 
 ----------------------------------------------------------------
