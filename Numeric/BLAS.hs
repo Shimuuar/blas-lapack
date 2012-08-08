@@ -1,3 +1,4 @@
+{-# LANGUAGE FlexibleContexts #-}
 -- | BLAS operations on the immutable vectors
 module Numeric.BLAS (
     -- * Vector operations
@@ -5,17 +6,29 @@ module Numeric.BLAS (
   , hermitianProd
   , vectorNorm
   , absSum
+  , absIndex
   ) where
 
 import Control.Monad.Primitive
 import Control.Monad.ST
 
-import qualified Numeric.BLAS.Bindings as BLAS
-import           Numeric.BLAS.Bindings   (BLAS1,BLAS2,BLAS3,RealType)
+import Data.Vector.Generic (Mutable)
 
-import Numeric.BLAS.Vector
-import Numeric.BLAS.Internal
+import qualified Numeric.BLAS.Bindings as BLAS
+import           Numeric.BLAS.Bindings   (BLAS1,BLAS2,BLAS3,RealType,
+                                          Trans)
+
+
+import           Data.Vector.Generic         (Vector,unsafeThaw)
+import qualified Data.Vector.Storable      as S
+import qualified Numeric.BLAS.Vector       as V
+import qualified Numeric.BLAS.Matrix.Dense as D
+import qualified Numeric.BLAS.Matrix.Symm  as S
+
 import qualified Numeric.BLAS.Mutable as M
+
+import Numeric.BLAS.Mutable (MVectorBLAS)
+
 
 
 ----------------------------------------------------------------
@@ -23,37 +36,45 @@ import qualified Numeric.BLAS.Mutable as M
 ----------------------------------------------------------------
 
 -- | Scalar product of vectors
-dotProduct :: BLAS1 a => Vector a -> Vector a -> a
+dotProduct :: (BLAS1 a, Vector v a, MVectorBLAS (Mutable v))
+           => v a -> v a -> a
 {-# INLINE dotProduct #-}
-dotProduct v w
-  = runST
-  $ unsafeWithMVector v $ \mv ->
-    unsafeWithMVector w $ \mw ->
-      M.dotProduct mv mw
+dotProduct v u = runST $ do
+  mv <- unsafeThaw v
+  mu <- unsafeThaw u
+  M.dotProduct mv mu
 
 
 -- | hermitian dot product of vectors. For real-valued vectors is same
 --   as 'dotProduct'.
-hermitianProd :: BLAS1 a => Vector a -> Vector a -> a
+hermitianProd :: (BLAS1 a, Vector v a, MVectorBLAS (Mutable v))
+              => v a -> v a -> a
 {-# INLINE hermitianProd #-}
-hermitianProd v w
-  = runST
-  $ unsafeWithMVector v $ \mv ->
-    unsafeWithMVector w $ \mw ->
-      M.hermitianProd mv mw
+hermitianProd v u = runST $ do
+  mv <- unsafeThaw v
+  mu <- unsafeThaw u
+  M.hermitianProd mv mu
 
 
 -- | Euqlidean norm of vector
-vectorNorm :: BLAS1 a => Vector a -> RealType a
+vectorNorm :: (BLAS1 a, Vector v a, MVectorBLAS (Mutable v))
+           => v a -> RealType a
 {-# INLINE vectorNorm #-}
 vectorNorm v
-  = runST
-  $ unsafeWithMVector v M.vectorNorm
+  = runST $ M.vectorNorm =<< unsafeThaw v
 
 
 -- | Sum of absolute values of vector
-absSum :: BLAS1 a => Vector a -> RealType a
+absSum :: (BLAS1 a, Vector v a, MVectorBLAS (Mutable v))
+       => v a -> RealType a
 {-# INLINE absSum #-}
 absSum v
-  = runST
-  $ unsafeWithMVector v M.absSum
+  = runST $ M.absSum =<< unsafeThaw v
+
+
+-- | Sum of absolute values of vector
+absIndex :: (BLAS1 a, Vector v a, MVectorBLAS (Mutable v))
+         => v a -> Int
+{-# INLINE absIndex #-}
+absIndex v
+  = runST $ M.absIndex =<< unsafeThaw v
