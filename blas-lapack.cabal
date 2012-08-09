@@ -40,4 +40,4 @@ Library
     Numeric.BLAS.Matrix.Dense
     Numeric.BLAS.Matrix.Dense.Mutable
   Other-modules:
-    Numeric.BLAS.Internal
+    Data.Internal

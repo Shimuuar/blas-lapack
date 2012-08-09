@@ -21,7 +21,7 @@ import Foreign.Marshal.Array ( advancePtr )
 import Foreign.ForeignPtr
 import Foreign.Storable
 
-import Numeric.BLAS.Internal
+import Data.Internal
 
 
 

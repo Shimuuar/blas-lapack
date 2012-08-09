@@ -1,5 +1,5 @@
 -- | Helpers for the bindings
-module Numeric.BLAS.Internal where
+module Data.Internal where
 
 import Control.Monad.ST        (runST)
 import Control.Monad.ST.Unsafe (unsafeIOToST)
