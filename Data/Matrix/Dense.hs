@@ -27,7 +27,6 @@ import Data.Vector.Storable.Internal
 import qualified Data.Vector.Generic as G
 
 import Foreign.Marshal.Array ( advancePtr )
-import Foreign.Ptr
 import Foreign.ForeignPtr
 import Foreign.Storable
 
@@ -36,6 +35,10 @@ import qualified Data.Matrix.Dense.Mutable    as M
 import Data.Matrix.Generic
 import qualified Data.Matrix.Generic.Mutable as MM
 
+
+
+----------------------------------------------------------------
+-- Data type
 ----------------------------------------------------------------
 
 -- | Immutable dense matrix
@@ -51,17 +54,17 @@ type instance G.Mutable Matrix = M.MMatrix
 instance NFData (Matrix a)
 
 instance Storable a => IsMatrix Matrix a where
-  rows (Matrix n _ _ _) = n
-  {-# INLINE rows #-}
-  cols (Matrix _ n _ _) = n
-  {-# INLINE cols #-}
-  unsafeIndex (Matrix _ _ lda fp) (i,j)
+  basicRows (Matrix n _ _ _) = n
+  {-# INLINE basicRows #-}
+  basicCols (Matrix _ n _ _) = n
+  {-# INLINE basicCols #-}
+  basicUnsafeIndex (Matrix _ _ lda fp) (i,j)
     = unsafeInlineIO $ withForeignPtr fp $ \p -> peekElemOff p (i + lda * j)
-  {-# INLINE unsafeIndex #-}
-  unsafeThaw   (Matrix    r c lda fp) = return $! M.MMatrix r c lda fp
-  {-# INLINE unsafeThaw #-}
-  unsafeFreeze (M.MMatrix r c lda fp) = return $! Matrix    r c lda fp
-  {-# INLINE unsafeFreeze #-}
+  {-# INLINE basicUnsafeIndex  #-}
+  basicUnsafeThaw   (Matrix    r c lda fp) = return $! M.MMatrix r c lda fp
+  {-# INLINE basicUnsafeThaw   #-}
+  basicUnsafeFreeze (M.MMatrix r c lda fp) = return $! Matrix    r c lda fp
+  {-# INLINE basicUnsafeFreeze #-}
 
 instance (Storable a, Show a) => Show (Matrix a) where
   show m

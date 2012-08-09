@@ -47,15 +47,21 @@ data MMatrix s a = MMatrix {-# UNPACK #-} !Int -- N of rows
 
 
 instance Storable a => IsMMatrix MMatrix a where
-  rows (MMatrix n _ _ _) = n
-  cols (MMatrix _ n _ _) = n
-  isIndexMutable _ _     = True
-  unsafeRead  (MMatrix _ _ lda fp) (!i,!j)
+  basicRows (MMatrix n _ _ _) = n
+  {-# INLINE basicRows #-}
+  basicCols (MMatrix _ n _ _) = n
+  {-# INLINE basicCols #-}
+  basicIsIndexMutable _ _     = True
+  {-# INLINE basicIsIndexMutable #-}
+  basicUnsafeRead  (MMatrix _ _ lda fp) (!i,!j)
     = unsafePrimToPrim
     $ withForeignPtr fp (`peekElemOff` (i + j*lda))
-  unsafeWrite (MMatrix _ _ lda fp) (!i,!j) x
+  {-# INLINE basicUnsafeRead #-}
+  basicUnsafeWrite (MMatrix _ _ lda fp) (!i,!j) x
     = unsafePrimToPrim
     $ withForeignPtr fp $ \p -> pokeElemOff p (i + j*lda) x
+  {-# INLINE basicUnsafeWrite #-}
+
 
 
 ----------------------------------------------------------------
