@@ -5,7 +5,7 @@
 -- |
 -- Strided storable vectors. They support vector API. It they are
 -- created using vector APi stride is set to 1.
-module Numeric.BLAS.Vector.Mutable ( 
+module Data.Vector.Storable.Strided.Mutable (
     MVector(..)
   , stride
   ) where

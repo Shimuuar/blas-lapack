@@ -27,12 +27,14 @@ Library
     vector,
     blas-bindings
   Exposed-modules:      
+    -- * Data types
+    -- Vector
+    Data.Vector.Storable.Strided
+    Data.Vector.Storable.Strided.Mutable
     -- High level BLAS interface
     Numeric.BLAS
     Numeric.BLAS.Mutable
     -- Vector
-    Numeric.BLAS.Vector
-    Numeric.BLAS.Vector.Mutable
     -- Matrix API
     Numeric.BLAS.Matrix
     Numeric.BLAS.Matrix.Mutable

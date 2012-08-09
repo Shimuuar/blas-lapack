@@ -34,7 +34,7 @@ import qualified Numeric.BLAS.Matrix         as Mat
 import qualified Numeric.BLAS.Matrix.Mutable as MMat
 -- Concrete vectors
 import qualified Data.Vector.Storable        as S
-import qualified Numeric.BLAS.Vector         as V
+import qualified Data.Vector.Storable.Strided         as V
 import qualified Numeric.BLAS.Matrix.Dense   as D
 import qualified Numeric.BLAS.Matrix.Dense.Mutable as MD
 import qualified Numeric.BLAS.Matrix.Symm    as S

@@ -48,7 +48,7 @@ import           Numeric.BLAS.Bindings   (BLAS1,BLAS2,BLAS3,RealType,
                                          )
 
 import qualified Data.Vector.Storable              as S
-import qualified Numeric.BLAS.Vector.Mutable       as V
+import qualified Data.Vector.Storable.Strided.Mutable       as V
 import qualified Numeric.BLAS.Matrix.Mutable       as M
 import qualified Numeric.BLAS.Matrix.Dense.Mutable as MD
 

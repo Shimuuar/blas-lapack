@@ -31,7 +31,7 @@ import Foreign.Ptr
 import Foreign.ForeignPtr
 import Foreign.Storable
 
-import qualified Numeric.BLAS.Vector               as V
+import qualified Data.Vector.Storable.Strided               as V
 import qualified Numeric.BLAS.Matrix.Dense.Mutable as M
 import Numeric.BLAS.Matrix
 import qualified Numeric.BLAS.Matrix.Mutable as MM

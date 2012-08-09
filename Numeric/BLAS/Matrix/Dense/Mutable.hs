@@ -27,7 +27,7 @@ import Foreign.ForeignPtr
 import Foreign.Storable
 
 import Data.Internal
-import Numeric.BLAS.Vector.Mutable
+import Data.Vector.Storable.Strided.Mutable
 import Numeric.BLAS.Matrix.Mutable
 
 
