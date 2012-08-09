@@ -4,7 +4,7 @@
 {-# LANGUAGE TypeFamilies          #-}
 -- |
 -- Generic immutable matrix interface
-module Numeric.BLAS.Matrix (
+module Data.Matrix.Generic (
     -- * Type class
     IsMatrix(..)
     -- ** Accessors
@@ -17,8 +17,8 @@ module Numeric.BLAS.Matrix (
 import Control.Monad             (liftM)
 import Control.Monad.Primitive
 import Data.Complex              (Complex,conjugate)
-import qualified Numeric.BLAS.Matrix.Mutable as M
-import           Data.Vector.Generic (Mutable)
+import qualified Data.Matrix.Generic.Mutable as M
+import           Data.Vector.Generic           (Mutable)
 
 
 ----------------------------------------------------------------

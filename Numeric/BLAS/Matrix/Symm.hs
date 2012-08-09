@@ -1,7 +1,7 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 -- | Dense matrix
-module Numeric.BLAS.Matrix.Symm (
+module Data.Matrix.Generic.Symm (
     -- * Matrix data type
     Symmetric
   , Hermitian

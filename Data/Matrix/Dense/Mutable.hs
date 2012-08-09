@@ -3,7 +3,7 @@
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 -- | Mutable dense matrix
-module Numeric.BLAS.Matrix.Dense.Mutable (
+module Data.Matrix.Dense.Mutable (
     -- * Data types
     MMatrix(..)
     -- * Creation
@@ -28,7 +28,7 @@ import Foreign.Storable
 
 import Data.Internal
 import Data.Vector.Storable.Strided.Mutable
-import Numeric.BLAS.Matrix.Mutable
+import Data.Matrix.Generic.Mutable
 
 
 
@@ -77,7 +77,7 @@ new (!nR,!nC) = do
 getRow :: Storable a => Int -> MMatrix s a -> MVector s a
 {-# INLINE getRow #-}
 getRow n m
-  | n < 0 || n >= cols m = error "Numeric.BLAS.Matrix.Mutable.getRow: row number out of bounds"
+  | n < 0 || n >= cols m = error "Data.Matrix.Generic.Mutable.getRow: row number out of bounds"
   | otherwise            = unsafeGetRow n m
 
 
@@ -85,7 +85,7 @@ getRow n m
 getCol :: Storable a => Int -> MMatrix s a -> MVector s a
 {-# INLINE getCol #-}
 getCol n m
-  | n < 0 || n >= rows m = error "Numeric.BLAS.Matrix.Mutable.getRow: row number out of bounds"
+  | n < 0 || n >= rows m = error "Data.Matrix.Generic.Mutable.getRow: row number out of bounds"
   | otherwise            = unsafeGetCol n m
 
 -- | Get nth row of matrix as vector.

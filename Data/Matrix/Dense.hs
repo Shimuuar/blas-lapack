@@ -3,7 +3,7 @@
 {-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE DeriveDataTypeable    #-}
 -- | Dense matrix
-module Numeric.BLAS.Matrix.Dense (
+module Data.Matrix.Dense (
     -- * Matrix data type
     Matrix
     -- * Accessors
@@ -31,10 +31,10 @@ import Foreign.Ptr
 import Foreign.ForeignPtr
 import Foreign.Storable
 
-import qualified Data.Vector.Storable.Strided               as V
-import qualified Numeric.BLAS.Matrix.Dense.Mutable as M
-import Numeric.BLAS.Matrix
-import qualified Numeric.BLAS.Matrix.Mutable as MM
+import qualified Data.Vector.Storable.Strided as V
+import qualified Data.Matrix.Dense.Mutable    as M
+import Data.Matrix.Generic
+import qualified Data.Matrix.Generic.Mutable as MM
 
 ----------------------------------------------------------------
 

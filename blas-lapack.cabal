@@ -31,15 +31,13 @@ Library
     -- Vector
     Data.Vector.Storable.Strided
     Data.Vector.Storable.Strided.Mutable
+    -- Matrix
+    Data.Matrix.Generic
+    Data.Matrix.Generic.Mutable
+    Data.Matrix.Dense
+    Data.Matrix.Dense.Mutable
     -- High level BLAS interface
     Numeric.BLAS
     Numeric.BLAS.Mutable
-    -- Vector
-    -- Matrix API
-    Numeric.BLAS.Matrix
-    Numeric.BLAS.Matrix.Mutable
-    -- Concrete matrices
-    Numeric.BLAS.Matrix.Dense
-    Numeric.BLAS.Matrix.Dense.Mutable
   Other-modules:
     Data.Internal

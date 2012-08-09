@@ -4,7 +4,7 @@
 {-# LANGUAGE BangPatterns          #-}
 -- |
 -- Generic mutable matrix interface
-module Numeric.BLAS.Matrix.Mutable (
+module Data.Matrix.Generic.Mutable (
     -- * Type class
     IsMMatrix(..)
     -- * Newtype wrappers

@@ -29,15 +29,15 @@ import           Data.Vector.Generic         (Vector,unsafeThaw)
 import qualified Data.Vector.Generic         as G
 import qualified Data.Vector.Generic.Mutable as MG
 -- Matrix type classes
-import           Numeric.BLAS.Matrix           (Transposed(..),Conjugated(..))
-import qualified Numeric.BLAS.Matrix         as Mat
-import qualified Numeric.BLAS.Matrix.Mutable as MMat
+import           Data.Matrix.Generic           (Transposed(..),Conjugated(..))
+import qualified Data.Matrix.Generic         as Mat
+import qualified Data.Matrix.Generic.Mutable as MMat
 -- Concrete vectors
-import qualified Data.Vector.Storable        as S
-import qualified Data.Vector.Storable.Strided         as V
-import qualified Numeric.BLAS.Matrix.Dense   as D
-import qualified Numeric.BLAS.Matrix.Dense.Mutable as MD
-import qualified Numeric.BLAS.Matrix.Symm    as S
+import qualified Data.Vector.Storable         as S
+import qualified Data.Vector.Storable.Strided as V
+import qualified Data.Matrix.Dense            as D
+import qualified Data.Matrix.Dense.Mutable    as MD
+-- import qualified Data.Matrix.Generic.Symm    as S
 
 import qualified Numeric.BLAS.Mutable as M
 
