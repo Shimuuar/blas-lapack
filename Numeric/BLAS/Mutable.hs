@@ -22,10 +22,16 @@ module Numeric.BLAS.Mutable (
   , scaleVector
   , addVecScaled
     -- * Level 2 BLAS
+    -- ** Matrix x Vector
   , MultMV(..)
   , multMV
   , MultTMV(..)
   , multTMV
+    -- ** Vector x Vector
+  , unsafeCrossVV
+  , crossVV
+  , unsafeCrossHVV
+  , crossHVV
     -- * Level 3 BLAS
   , unsafeMultMM
   , multMM
@@ -239,7 +245,6 @@ multTMV a t m x b y
   | otherwise                 = unsafeMultTMV a t m x b y
 
 
-
 instance S.Storable a => MultMV MD.MMatrix a where
   unsafeMultMV a = unsafeMultTMV a NoTrans
   {-# INLINE unsafeMultMV #-}
@@ -255,6 +260,72 @@ instance S.Storable a => MultTMV MD.MMatrix a where
                     px (blasStride y)
                   b py (blasStride y)
   {-# INLINE unsafeMultTMV #-}
+
+
+
+----------------------------------------
+
+-- | Compute
+--
+-- > A ← α·x·y' + A
+unsafeCrossVV
+  :: (PrimMonad m, MVectorBLAS v, BLAS2 a)
+  => a -> v (PrimState m) a -> v (PrimState m) a -> MD.MMatrix (PrimState m) a -> m ()
+{-# INLINE unsafeCrossVV #-}
+unsafeCrossVV a v u (MD.MMatrix _ _ lda fp) = do
+  unsafePrimToPrim $
+    withForeignPtr (blasFPtr v) $ \p ->
+    withForeignPtr (blasFPtr u) $ \q ->
+    withForeignPtr fp           $ \m ->
+      BLAS.geru ColMajor
+        (blasLength v) (blasLength u) a
+        p (blasStride v)
+        q (blasStride u)
+        m lda
+
+-- | Compute
+--
+-- > A ← α·x·y' + A
+crossVV
+  :: (PrimMonad m, MVectorBLAS v, BLAS2 a)
+  => a -> v (PrimState m) a -> v (PrimState m) a -> MD.MMatrix (PrimState m) a -> m ()
+{-# INLINE crossVV #-}
+crossVV a v u m
+  | blasLength v /= M.cols m = error "!"
+  | blasLength u /= M.rows m = error "!"
+  | otherwise                = unsafeCrossVV a v u m
+
+-- | Compute
+--
+-- > A ← α·x·conjg(y') + A
+unsafeCrossHVV
+  :: (PrimMonad m, MVectorBLAS v, BLAS2 a)
+  => a -> v (PrimState m) a -> v (PrimState m) a -> MD.MMatrix (PrimState m) a -> m ()
+{-# INLINE unsafeCrossHVV #-}
+unsafeCrossHVV a v u (MD.MMatrix _ _ lda fp) = do
+  unsafePrimToPrim $
+    withForeignPtr (blasFPtr v) $ \p ->
+    withForeignPtr (blasFPtr u) $ \q ->
+    withForeignPtr fp           $ \m ->
+      BLAS.gerc ColMajor
+        (blasLength v) (blasLength u) a
+        p (blasStride v)
+        q (blasStride u)
+        m lda
+
+-- | Compute
+--
+-- > A ← α·x·conjg(y') + A
+crossHVV
+  :: (PrimMonad m, MVectorBLAS v, BLAS2 a)
+  => a -> v (PrimState m) a -> v (PrimState m) a -> MD.MMatrix (PrimState m) a -> m ()
+{-# INLINE crossHVV #-}
+crossHVV a v u m
+  | blasLength v /= M.cols m = error "!"
+  | blasLength u /= M.rows m = error "!"
+  | otherwise                = unsafeCrossVV a v u m
+
+
 
 
 
