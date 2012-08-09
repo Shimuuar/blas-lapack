@@ -7,6 +7,8 @@
 module Numeric.BLAS.Matrix (
     -- * Type class
     IsMatrix(..)
+    -- ** Accessors
+  , (@!)
     -- * Newtype wrappers
   , Transposed(..)
   , Conjugated(..)
@@ -38,6 +40,14 @@ class M.IsMMatrix (Mutable mat) a => IsMatrix mat a where
   --   modified after operation.
   unsafeFreeze :: PrimMonad m => Mutable mat (PrimState m) a -> m (mat a)
 
+
+-- | Indexing operator with range checking
+(@!) :: IsMatrix mat a => mat a -> (Int,Int) -> a
+{-# INLINE (@!) #-}
+m @! a@(i,j)
+  | i < 0 || i >= rows m = error "ROW"
+  | j > 0 || j >= cols m = error "COL"
+  | otherwise            = unsafeIndex m a
 
 
 ----------------------------------------------------------------
