@@ -48,7 +48,7 @@ data MMatrix s a = MMatrix {-# UNPACK #-} !Int -- N of rows
 
 instance Storable a => IsMMatrix MMatrix a where
   rows (MMatrix n _ _ _) = n
-  cols (MMatrix n _ _ _) = n
+  cols (MMatrix _ n _ _) = n
   isIndexMutable _ _     = True
   unsafeRead  (MMatrix _ _ lda fp) (!i,!j)
     = unsafePrimToPrim
