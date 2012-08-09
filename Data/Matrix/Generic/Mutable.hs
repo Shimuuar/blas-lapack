@@ -2,7 +2,6 @@
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE BangPatterns          #-}
-{-# LANGUAGE NoMonomorphismRestriction #-}
 -- |
 -- Generic mutable matrix interface
 module Data.Matrix.Generic.Mutable (

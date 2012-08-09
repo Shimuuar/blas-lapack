@@ -2,15 +2,15 @@
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE DeriveDataTypeable    #-}
--- | Dense matrix
+-- | Dense matrix.
 module Data.Matrix.Dense (
     -- * Matrix data type
     Matrix
     -- * Accessors
-  , getColumn
   , getRow
-  , unsafeGetColumn
+  , getCol
   , unsafeGetRow
+  , unsafeGetColumn
     -- ** Constructos
   , fromCols
   , fromRows
@@ -81,29 +81,31 @@ instance (Storable a, Show a) => Show (Matrix a) where
 -- Various getters
 ----------------------------------------------------------------
 
-unsafeGetColumn :: Storable a => Matrix a -> Int -> V.Vector a
-{-# INLINE unsafeGetColumn #-}
-unsafeGetColumn (Matrix nr _ lda fp) i
-  = V.unsafeFromForeignPtr nr 1 $ updPtr (`advancePtr` (i * lda)) fp
-
-unsafeGetRow :: Storable a => Matrix a -> Int -> V.Vector a
-{-# INLINE unsafeGetRow #-}
-unsafeGetRow (Matrix _ nc lda fp) i
-  = V.unsafeFromForeignPtr nc lda $ updPtr (`advancePtr` i) fp
-
-getColumn :: Storable a => Matrix a -> Int -> V.Vector a
-{-# INLINE getColumn #-}
-getColumn m i
-  | i < 0 || i >= cols m = error "A"
-  | otherwise            = unsafeGetColumn m i
-
-
+-- | Get n'th row of matrix as vector.
 getRow :: Storable a => Matrix a -> Int -> V.Vector a
 {-# INLINE getRow #-}
 getRow m i
   | i < 0 || i >= rows m = error "A"
   | otherwise            = unsafeGetRow m i
 
+-- | Get n'th column of matrix as vector.
+getCol :: Storable a => Matrix a -> Int -> V.Vector a
+{-# INLINE getCol #-}
+getCol m i
+  | i < 0 || i >= cols m = error "A"
+  | otherwise            = unsafeGetColumn m i
+
+-- | Get n'th row of matrix as vector. No range checks performed.
+unsafeGetRow :: Storable a => Matrix a -> Int -> V.Vector a
+{-# INLINE unsafeGetRow #-}
+unsafeGetRow (Matrix _ nc lda fp) i
+  = V.unsafeFromForeignPtr nc lda $ updPtr (`advancePtr` i) fp
+
+-- | Get n'th column of matrix as vector. No range checks performed.
+unsafeGetColumn :: Storable a => Matrix a -> Int -> V.Vector a
+{-# INLINE unsafeGetColumn #-}
+unsafeGetColumn (Matrix nr _ lda fp) i
+  = V.unsafeFromForeignPtr nr 1 $ updPtr (`advancePtr` (i * lda)) fp
 
 
 
@@ -111,6 +113,8 @@ getRow m i
 -- Constructors
 ----------------------------------------------------------------
 
+-- | Create matrix from list of columns. All columns must have same
+--   length.
 fromCols :: Storable a => [[a]] -> Matrix a
 fromCols [] = error "AAA"
 fromCols columns = runST $ do
@@ -125,6 +129,6 @@ fromCols columns = runST $ do
               [(n:_)] -> n :: Int
               _       -> error "MUST BE SAME"
 
-
+-- | Create matrix from list of rows. All rows must have same length.
 fromRows :: Storable a => [[a]] -> Matrix a
 fromRows = fromCols . transpose

@@ -36,9 +36,16 @@ import Data.Matrix.Generic.Mutable
 -- Data type
 ----------------------------------------------------------------
 
--- | Mutable dense matrix.
+-- | Mutable dense matrix. Data is stored in column major order.
+--   Fields of data type are:
 --
---   Data is stored in column major order.
+-- * Number of rows
+--
+-- * Number of columns
+--
+-- * Leading dimension size (physical size of column)
+--
+-- * Pointer to data
 data MMatrix s a = MMatrix {-# UNPACK #-} !Int -- N of rows
                            {-# UNPACK #-} !Int -- N of columns
                            {-# UNPACK #-} !Int -- Leading dim size
@@ -69,7 +76,9 @@ instance Storable a => IsMMatrix MMatrix a where
 ----------------------------------------------------------------
 
 -- | Allocate new matrix.
-new :: (PrimMonad m, Storable a) => (Int,Int) -> m (MMatrix (PrimState m) a)
+new :: (PrimMonad m, Storable a)
+    => (Int,Int)                -- ^ (rows,columns)
+    -> m (MMatrix (PrimState m) a)
 new (!nR,!nC) = do
   fp <- unsafePrimToPrim $ mallocVector $ nR * nC
   return $ MMatrix nR nC nR fp
@@ -79,29 +88,29 @@ new (!nR,!nC) = do
 -- Accessors
 ----------------------------------------------------------------
 
--- | Get nth row of matrix as vector.
+-- | Get n'th row of matrix as mutable vector.
 getRow :: Storable a => Int -> MMatrix s a -> MVector s a
 {-# INLINE getRow #-}
 getRow n m
-  | n < 0 || n >= cols m = error "Data.Matrix.Generic.Mutable.getRow: row number out of bounds"
+  | n < 0 || n >= cols m = error "Data.Matrix.Dense.Mutable.getRow: row number out of bounds"
   | otherwise            = unsafeGetRow n m
 
 
--- | Get nth row of matrix as vector.
+-- | Get n'th column of matrix as mutable vector.
 getCol :: Storable a => Int -> MMatrix s a -> MVector s a
 {-# INLINE getCol #-}
 getCol n m
-  | n < 0 || n >= rows m = error "Data.Matrix.Generic.Mutable.getRow: row number out of bounds"
+  | n < 0 || n >= rows m = error "Data.Matrix.Dense.Mutable.getRow: row number out of bounds"
   | otherwise            = unsafeGetCol n m
 
--- | Get nth row of matrix as vector.
+-- | Get n'th row of matrix as mutable vector. No range checks performed.
 unsafeGetRow :: Storable a => Int -> MMatrix s a -> MVector s a
 {-# INLINE unsafeGetRow #-}
 unsafeGetRow n (MMatrix _ nC lda fp)
   = MVector nC lda $ updPtr (`advancePtr` n) fp
 
 
--- | Get nth row of matrix as vector.
+-- | Get n'th column of matrix as mutable vector. No range checks performed.
 unsafeGetCol :: Storable a => Int -> MMatrix s a -> MVector s a
 {-# INLINE unsafeGetCol #-}
 unsafeGetCol n (MMatrix nR _ lda fp)
