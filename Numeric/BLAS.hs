@@ -4,7 +4,8 @@
 {-# LANGUAGE TypeFamilies #-}
 -- | BLAS operations on the immutable vectors
 module Numeric.BLAS (
-    Mul(..)
+    Add(..)
+  , Mul(..)
     -- * Vector operations
   , dotProduct
   , hermitianProd
@@ -46,7 +47,11 @@ import Numeric.BLAS.Mutable (MVectorBLAS)
 -- Type class for multiplication
 ----------------------------------------------------------------
 
--- | Very overloaded operator for matrix and vector multiplication
+-- | Addition for vectors and matrices.
+class Add a where
+  (+.) :: a -> a -> a
+
+-- | Very overloaded operator for matrix and vector multiplication.
 class Mul a b where
   type MulRes a b :: *
   (*.) :: a -> b -> MulRes a b
