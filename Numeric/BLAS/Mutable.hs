@@ -370,10 +370,15 @@ multMM :: (PrimMonad m, BLAS3 a)
        -> m ()
 {-# INLINE multMM #-}
 multMM a ta ma tb mb b mc
-  | rowsT ta ma /= M.rows mc   = error "MM 1"
-  | colsT tb mb /= M.cols mc   = error "MM 2"
-  | colsT ta ma /= rowsT tb mb = error "MM 3"
-  | otherwise                  = unsafeMultMM a ta ma tb mb b mc
+  | rowA /= rowC = error "MM 1"
+  | colB /= colC = error "MM 2"
+  | colA /= rowB = error "MM 3"
+  | otherwise    = unsafeMultMM a ta ma tb mb b mc
+  where
+    rowA = rowsT ta ma ; colA = colsT ta ma
+    rowB = rowsT tb mb ; colB = colsT tb mb
+    rowC = M.rows   mc ; colC = M.cols   mc
+
 
 colsT :: M.IsMMatrix mat a => Trans -> mat s a -> Int
 {-# INLINE colsT #-}
