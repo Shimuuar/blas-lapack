@@ -14,15 +14,13 @@ module Numeric.BLAS (
     -- * Matrix vector operations
   ) where
 
-import Control.Monad.Primitive
 import Control.Monad.ST
 
 import Data.Complex
 import Data.Vector.Generic (Mutable)
 
-import qualified Numeric.BLAS.Bindings as BLAS
-import           Numeric.BLAS.Bindings   (BLAS1,BLAS2,BLAS3,RealType,
-                                          Trans(..))
+import Numeric.BLAS.Bindings (BLAS1,BLAS2,BLAS3,RealType,
+                              Trans(..))
 
 -- Vector type classes
 import           Data.Vector.Generic         (Vector,unsafeThaw)
@@ -31,7 +29,6 @@ import qualified Data.Vector.Generic.Mutable as MG
 -- Matrix type classes
 import           Data.Matrix.Generic           (Transposed(..),Conjugated(..))
 import qualified Data.Matrix.Generic         as Mat
-import qualified Data.Matrix.Generic.Mutable as MMat
 -- Concrete vectors
 import qualified Data.Vector.Storable         as S
 import qualified Data.Vector.Storable.Strided as V
@@ -42,7 +39,7 @@ import qualified Data.Matrix.Dense.Mutable    as MD
 import qualified Numeric.BLAS.Mutable as M
 
 import Numeric.BLAS.Mutable (MVectorBLAS)
-import Debug.Trace
+
 
 
 ----------------------------------------------------------------
