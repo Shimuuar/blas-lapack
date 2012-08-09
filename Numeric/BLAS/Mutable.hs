@@ -4,13 +4,13 @@
 -- BLAS interface for mutable data structures.
 --
 -- This is more or less direct mapping of BLAS operation onto mutable
--- vectors and matrices. There is very little sugar on top of it.
+-- vectors and matrices. There is very little sugar on top of it. API
+-- only hides pointers from plain view and provide little less cryptic
+-- names.
 module Numeric.BLAS.Mutable (
-    -- * Type classes
-    MVectorBLAS(..)
     -- * Level 1 BLAS
     -- ** Low level data copying
-  , copy
+    copy
   , swap
     -- ** \"Pure\" functions
   , dotProduct
@@ -35,6 +35,8 @@ module Numeric.BLAS.Mutable (
     -- * Level 3 BLAS
   , unsafeMultMM
   , multMM
+    -- * Type classes
+  , MVectorBLAS(..)
   ) where
 
 import Control.Monad.Primitive
@@ -54,33 +56,6 @@ import qualified Data.Matrix.Dense.Mutable            as MD
 
 
 
-----------------------------------------------------------------
--- Type classes
-----------------------------------------------------------------
-
--- | Type class for mutable vectors which could be used with BLAS.
-class MVectorBLAS v where
-  blasLength :: v s a -> Int
-  blasStride :: v s a -> Int
-  blasFPtr   :: v s a -> ForeignPtr a
-
--- | Strided vectors
-instance MVectorBLAS V.MVector where
-  blasLength (V.MVector n _ _) = n
-  blasStride (V.MVector _ s _) = s
-  blasFPtr   (V.MVector _ _ p) = p
-  {-# INLINE blasLength #-}
-  {-# INLINE blasStride #-}
-  {-# INLINE blasFPtr   #-}
-
--- | Normal storable vectors
-instance MVectorBLAS S.MVector where
-  blasLength (S.MVector n _) = n
-  blasStride  _              = 1
-  blasFPtr   (S.MVector _ p) = p
-  {-# INLINE blasLength #-}
-  {-# INLINE blasStride #-}
-  {-# INLINE blasFPtr   #-}
 
 
 
@@ -88,37 +63,37 @@ instance MVectorBLAS S.MVector where
 -- BLAS level 1
 ----------------------------------------------------------------
 
--- | Copy content of vectors. Vectors must have same length
-copy :: (PrimMonad m, BLAS1 a, MVectorBLAS v, MVectorBLAS u)
+-- | Copy content of vector. Vectors must have same length.
+copy :: (PrimMonad m, BLAS1 a, MVectorBLAS v)
      => v (PrimState m) a -- ^ Source
-     -> u (PrimState m) a -- ^ Destination
+     -> v (PrimState m) a -- ^ Destination
      -> m ()
 {-# INLINE copy #-}
 copy = twoVecOp BLAS.copy
 
 
--- | Swap content of vectors
-swap :: (PrimMonad m, BLAS1 a, MVectorBLAS v, MVectorBLAS u)
+-- | Swap content of vectors. Vectors must have same length.
+swap :: (PrimMonad m, BLAS1 a, MVectorBLAS v)
      => v (PrimState m) a
-     -> u (PrimState m) a
+     -> v (PrimState m) a
      -> m ()
 {-# INLINE swap #-}
 swap = twoVecOp BLAS.swap
 
 
 -- | Scalar product of vectors
-dotProduct :: (PrimMonad m, BLAS1 a, MVectorBLAS v, MVectorBLAS u)
+dotProduct :: (PrimMonad m, BLAS1 a, MVectorBLAS v)
            => v (PrimState m) a
-           -> u (PrimState m) a
+           -> v (PrimState m) a
            -> m a
 {-# INLINE dotProduct #-}
 dotProduct = twoVecOp BLAS.dotu
 
 
 -- | Scalar product of vectors
-hermitianProd :: (PrimMonad m, BLAS1 a, MVectorBLAS v, MVectorBLAS u)
+hermitianProd :: (PrimMonad m, BLAS1 a, MVectorBLAS v)
               => v (PrimState m) a
-              -> u (PrimState m) a
+              -> v (PrimState m) a
               -> m a
 {-# INLINE hermitianProd #-}
 hermitianProd = twoVecOp BLAS.dotc
@@ -163,10 +138,10 @@ scaleVector a v
 -- | Add scaled vector to another. Target vector modified in place
 --
 -- > y ← α·x + y
-addVecScaled :: (PrimMonad m, BLAS1 a, MVectorBLAS v, MVectorBLAS u)
+addVecScaled :: (PrimMonad m, BLAS1 a, MVectorBLAS v)
              => a                 -- ^ /α/
              -> v (PrimState m) a -- ^ /x/
-             -> u (PrimState m) a -- ^ /y/
+             -> v (PrimState m) a -- ^ /y/
              -> m ()
 {-# INLINE addVecScaled #-}
 addVecScaled a v u
@@ -421,3 +396,36 @@ oneVecOp :: (PrimMonad m, MVectorBLAS v)
 oneVecOp fun v
   = unsafePrimToPrim
   $ withForeignPtr (blasFPtr v) $ \p -> fun (blasLength v) p (blasStride v)
+
+
+
+----------------------------------------------------------------
+-- Type classes
+----------------------------------------------------------------
+
+-- | Type class for mutable vectors which could be used with BLAS.
+class MVectorBLAS v where
+  -- | Length of vector
+  blasLength :: v s a -> Int
+  -- | Stride between elements
+  blasStride :: v s a -> Int
+  -- | Pointer to data.
+  blasFPtr   :: v s a -> ForeignPtr a
+
+-- | Strided vectors
+instance MVectorBLAS V.MVector where
+  blasLength (V.MVector n _ _) = n
+  blasStride (V.MVector _ s _) = s
+  blasFPtr   (V.MVector _ _ p) = p
+  {-# INLINE blasLength #-}
+  {-# INLINE blasStride #-}
+  {-# INLINE blasFPtr   #-}
+
+-- | Normal storable vectors
+instance MVectorBLAS S.MVector where
+  blasLength (S.MVector n _) = n
+  blasStride  _              = 1
+  blasFPtr   (S.MVector _ p) = p
+  {-# INLINE blasLength #-}
+  {-# INLINE blasStride #-}
+  {-# INLINE blasFPtr   #-}
