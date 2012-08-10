@@ -35,6 +35,8 @@ module Numeric.BLAS.Mutable (
     -- * Level 3 BLAS
   , unsafeMultMM
   , multMM
+  , colsT
+  , rowsT
     -- * Type classes
   , MVectorBLAS(..)
   ) where
