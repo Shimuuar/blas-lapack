@@ -96,29 +96,29 @@ new (!nR,!nC) = do
 ----------------------------------------------------------------
 
 -- | Get n'th row of matrix as mutable vector.
-getRow :: Storable a => Int -> MMatrix s a -> MVector s a
+getRow :: Storable a => MMatrix s a -> Int -> MVector s a
 {-# INLINE getRow #-}
-getRow n m
-  | n < 0 || n >= cols m = error "Data.Matrix.Dense.Mutable.getRow: row number out of bounds"
-  | otherwise            = unsafeGetRow n m
+getRow m i
+  | i < 0 || i >= cols m = error "Data.Matrix.Dense.Mutable.getRow: row number out of bounds"
+  | otherwise            = unsafeGetRow m i
 
 
 -- | Get n'th column of matrix as mutable vector.
-getCol :: Storable a => Int -> MMatrix s a -> MVector s a
+getCol :: Storable a => MMatrix s a -> Int -> MVector s a
 {-# INLINE getCol #-}
-getCol n m
-  | n < 0 || n >= rows m = error "Data.Matrix.Dense.Mutable.getRow: row number out of bounds"
-  | otherwise            = unsafeGetCol n m
+getCol m i
+  | i < 0 || i >= rows m = error "Data.Matrix.Dense.Mutable.getRow: row number out of bounds"
+  | otherwise            = unsafeGetCol m i
 
 -- | Get n'th row of matrix as mutable vector. No range checks performed.
-unsafeGetRow :: Storable a => Int -> MMatrix s a -> MVector s a
+unsafeGetRow :: Storable a => MMatrix s a -> Int -> MVector s a
 {-# INLINE unsafeGetRow #-}
-unsafeGetRow n (MMatrix _ nC lda fp)
-  = MVector nC lda $ updPtr (`advancePtr` n) fp
+unsafeGetRow (MMatrix _ nC lda fp) i
+  = MVector nC lda $ updPtr (`advancePtr` i) fp
 
 
 -- | Get n'th column of matrix as mutable vector. No range checks performed.
-unsafeGetCol :: Storable a => Int -> MMatrix s a -> MVector s a
+unsafeGetCol :: Storable a => MMatrix s a -> Int -> MVector s a
 {-# INLINE unsafeGetCol #-}
-unsafeGetCol n (MMatrix nR _ lda fp)
-  = MVector nR 1 $ updPtr (`advancePtr` (n*lda)) fp
+unsafeGetCol (MMatrix nR _ lda fp) i
+  = MVector nR 1 $ updPtr (`advancePtr` (i*lda)) fp
