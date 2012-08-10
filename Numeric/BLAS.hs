@@ -2,7 +2,14 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE TypeFamilies #-}
--- | BLAS operations on the immutable vectors
+-- | 
+-- Module     : Numeric.BLAS
+-- Copyright  : Copyright (c) 2012 Aleksey Khudyakov <alexey.skladnoy@gmail.com>
+-- License    : BSD3
+-- Maintainer : Aleksey Khudyakov <alexey.skladnoy@gmail.com>
+-- Stability  : experimental
+--
+-- BLAS operations on the immutable vectors
 module Numeric.BLAS (
     Add(..)
   , Mul(..)

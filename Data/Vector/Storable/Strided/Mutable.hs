@@ -3,6 +3,12 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 -- |
+-- Module     : Data.Vector.Storable.Strided.Mutable
+-- Copyright  : Copyright (c) 2012 Aleksey Khudyakov <alexey.skladnoy@gmail.com>
+-- License    : BSD3
+-- Maintainer : Aleksey Khudyakov <alexey.skladnoy@gmail.com>
+-- Stability  : experimental
+--
 -- Strided storable vectors. They support vector API. It they are
 -- created using vector APi stride is set to 1.
 module Data.Vector.Storable.Strided.Mutable (

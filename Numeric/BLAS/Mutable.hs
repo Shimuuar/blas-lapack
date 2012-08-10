@@ -1,6 +1,12 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE FlexibleInstances     #-}
 -- |
+-- Module     : Numeric.BLAS.Mutable
+-- Copyright  : Copyright (c) 2012 Aleksey Khudyakov <alexey.skladnoy@gmail.com>
+-- License    : BSD3
+-- Maintainer : Aleksey Khudyakov <alexey.skladnoy@gmail.com>
+-- Stability  : experimental
+--
 -- BLAS interface for mutable data structures.
 --
 -- This is more or less direct mapping of BLAS operation onto mutable

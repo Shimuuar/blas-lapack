@@ -2,7 +2,14 @@
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE DeriveDataTypeable    #-}
--- | Dense matrix.
+-- |
+-- Module     : Data.Matrix.Dense
+-- Copyright  : Copyright (c) 2012 Aleksey Khudyakov <alexey.skladnoy@gmail.com>
+-- License    : BSD3
+-- Maintainer : Aleksey Khudyakov <alexey.skladnoy@gmail.com>
+-- Stability  : experimental
+--
+-- Dense matrix.
 module Data.Matrix.Dense (
     -- * Matrix data type
     Matrix

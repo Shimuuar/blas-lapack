@@ -2,7 +2,14 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE DeriveDataTypeable #-}
--- | Mutable dense matrix
+-- |
+-- Module     : Data.Matrix.Dense.Mutable
+-- Copyright  : Copyright (c) 2012 Aleksey Khudyakov <alexey.skladnoy@gmail.com>
+-- License    : BSD3
+-- Maintainer : Aleksey Khudyakov <alexey.skladnoy@gmail.com>
+-- Stability  : experimental
+--
+-- Mutable dense matrix
 module Data.Matrix.Dense.Mutable (
     -- * Data types
     MMatrix(..)

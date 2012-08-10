@@ -3,6 +3,12 @@
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE TypeFamilies          #-}
 -- |
+-- Module     : Data.Matrix.Generic
+-- Copyright  : Copyright (c) 2012 Aleksey Khudyakov <alexey.skladnoy@gmail.com>
+-- License    : BSD3
+-- Maintainer : Aleksey Khudyakov <alexey.skladnoy@gmail.com>
+-- Stability  : experimental
+--
 -- Generic immutable matrix interface  There are many different kinds
 -- of matrices. They all support different operations so common API
 -- is quite poor.

@@ -3,6 +3,12 @@
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE BangPatterns          #-}
 -- |
+-- Module     : Data.Matrix.Generic.Mutable
+-- Copyright  : Copyright (c) 2012 Aleksey Khudyakov <alexey.skladnoy@gmail.com>
+-- License    : BSD3
+-- Maintainer : Aleksey Khudyakov <alexey.skladnoy@gmail.com>
+-- Stability  : experimental
+--
 -- Generic mutable matrix interface
 module Data.Matrix.Generic.Mutable (
     -- * Type class
