@@ -99,7 +99,7 @@ new (!nR,!nC) = do
 getRow :: Storable a => MMatrix s a -> Int -> MVector s a
 {-# INLINE getRow #-}
 getRow m i
-  | i < 0 || i >= cols m = error "Data.Matrix.Dense.Mutable.getRow: row number out of bounds"
+  | i < 0 || i >= rows m = error "Data.Matrix.Dense.Mutable.getRow: row number out of bounds"
   | otherwise            = unsafeGetRow m i
 
 
@@ -107,7 +107,7 @@ getRow m i
 getCol :: Storable a => MMatrix s a -> Int -> MVector s a
 {-# INLINE getCol #-}
 getCol m i
-  | i < 0 || i >= rows m = error "Data.Matrix.Dense.Mutable.getRow: row number out of bounds"
+  | i < 0 || i >= cols m = error "Data.Matrix.Dense.Mutable.getRow: column number out of bounds"
   | otherwise            = unsafeGetCol m i
 
 -- | Get n'th row of matrix as mutable vector. No range checks performed.
