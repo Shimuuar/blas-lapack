@@ -6,6 +6,8 @@
 module Numeric.BLAS (
     Add(..)
   , Mul(..)
+  , trans
+  , conj
     -- * Vector operations
   , dotProduct
   , hermitianProd
@@ -55,6 +57,13 @@ class Add a where
 class Mul a b where
   type MulRes a b :: *
   (*.) :: a -> b -> MulRes a b
+
+trans :: mat a -> Transposed mat a
+trans = Transposed
+
+conj :: mat a -> Conjugated mat a
+conj  = Conjugated
+
 
 
 ----------------------------------------------------------------
@@ -108,26 +117,45 @@ absIndex v
 
 
 ----------------------------------------------------------------
--- BLAS 2
+-- Vector x Vector
 ----------------------------------------------------------------
 
+-- | Dot product for storable vectors
+instance (BLAS1 a) => Mul (Transposed S.Vector a) (S.Vector a) where
+  type MulRes (Transposed S.Vector a) (S.Vector a) = a
+  Transposed v *. u = dotProduct v u
 
--- Vector x Vector
+-- | Storable vectors
+instance (BLAS2 a) => Mul (S.Vector a) (Transposed S.Vector a) where
+  type MulRes (S.Vector a) (Transposed S.Vector a) = D.Matrix a
+  v *. Transposed u = mulVV 1 v u
 
+-- | Storable vectors
+instance (BLAS2 a) => Mul (S.Vector a) (Conjugated S.Vector a) where
+  type MulRes (S.Vector a) (Conjugated S.Vector a) = D.Matrix a
+  v *. Conjugated u = mulHVV 1 v u
+
+-- | Dot product for strided storable vectors
 instance (BLAS1 a) => Mul (Transposed V.Vector a) (V.Vector a) where
   type MulRes (Transposed V.Vector a) (V.Vector a) = a
   Transposed v *. u = dotProduct v u
 
+-- | Strided storable vectors
 instance (BLAS2 a) => Mul (V.Vector a) (Transposed V.Vector a) where
   type MulRes (V.Vector a) (Transposed V.Vector a) = D.Matrix a
   v *. Transposed u = mulVV 1 v u
 
+-- | Strided storable vectors
 instance (BLAS2 a) => Mul (V.Vector a) (Conjugated V.Vector a) where
   type MulRes (V.Vector a) (Conjugated V.Vector a) = D.Matrix a
   v *. Conjugated u = mulHVV 1 v u
 
 
-mulVV :: (BLAS2 a, Num a) => a -> V.Vector a -> V.Vector a -> D.Matrix a
+
+-- Primitive for Vector' x Vector multiplication
+mulVV :: (BLAS2 a, Vector v a, MVectorBLAS (Mutable v))
+      => a -> v a -> v a -> D.Matrix a
+{-# INLINE mulVV #-}
 mulVV a v u = runST $ do
   m  <- MD.new (G.length v, G.length u)
   v_ <- G.unsafeThaw v
@@ -135,7 +163,10 @@ mulVV a v u = runST $ do
   M.crossVV a v_ u_ m
   Mat.unsafeFreeze m
 
-mulHVV :: (BLAS2 a, Num a) => a -> V.Vector a -> V.Vector a -> D.Matrix a
+-- Primitive for conjg(Vector') x Vector multiplication
+mulHVV :: (BLAS2 a, Vector v a, MVectorBLAS (Mutable v))
+       => a -> v a -> v a -> D.Matrix a
+{-# INLINE mulHVV #-}
 mulHVV a v u = runST $ do
   m  <- MD.new (G.length v, G.length u)
   v_ <- G.unsafeThaw v
@@ -145,41 +176,80 @@ mulHVV a v u = runST $ do
 
 
 
+----------------------------------------------------------------
 -- Matrix x Vector
+----------------------------------------------------------------
 
 instance (BLAS2 a) => Mul (D.Matrix a) (V.Vector a) where
   type MulRes (D.Matrix a) (V.Vector a) = V.Vector a
-  (*.) = mulMV 1 NoTrans
+  (*.) = mulTMV 1 NoTrans
 
 instance (BLAS2 a) => Mul (Transposed D.Matrix a) (V.Vector a) where
   type MulRes (Transposed D.Matrix a) (V.Vector a) = V.Vector a
-  Transposed m *. v = mulMV 1 Trans m v
+  Transposed m *. v = mulTMV 1 Trans m v
 
 instance (BLAS2 (Complex a)) => Mul (Conjugated D.Matrix (Complex a)) (V.Vector (Complex a)) where
   type MulRes (Conjugated D.Matrix (Complex a)) (V.Vector (Complex a)) = V.Vector (Complex a)
-  Conjugated m *. v = mulMV 1 Trans m v
+  Conjugated m *. v = mulTMV 1 ConjTrans m v
 
 
-mulMV :: (BLAS2 a) => a -> Trans -> D.Matrix a -> V.Vector a -> V.Vector a
-mulMV a t m x = runST $ do
+-- Primitive for matrix vector multiplication
+mulTMV :: ( BLAS2 a
+          , Vector v a, MVectorBLAS (Mutable v)
+          , Mat.IsMatrix mat a, M.MultTMV (Mutable mat) a )
+       => a -> Trans -> mat a -> v a -> v a
+{-# INLINE mulTMV #-}
+mulTMV a t m x = runST $ do
   y_ <- MG.new $ G.length x
   x_ <- G.unsafeThaw x
   m_ <- Mat.unsafeThaw m
   M.multTMV a t m_ x_ 0 y_
   G.unsafeFreeze y_
 
+-- Primitive for matrix vector multiplication
+mulMV :: ( BLAS2 a
+         , Vector v a, MVectorBLAS (Mutable v)
+         , Mat.IsMatrix mat a, M.MultTMV (Mutable mat) a )
+      => a -> mat a -> v a -> v a
+{-# INLINE mulMV #-}
+mulMV a m x = runST $ do
+  y_ <- MG.new $ G.length x
+  x_ <- G.unsafeThaw x
+  m_ <- Mat.unsafeThaw m
+  M.multMV a m_ x_ 0 y_
+  G.unsafeFreeze y_
 
 
+
+----------------------------------------------------------------
 -- Matrix x Matrix
+----------------------------------------------------------------
 
 instance (BLAS3 a,Show a) => Mul (D.Matrix a) (D.Matrix a) where
   type MulRes (D.Matrix a) (D.Matrix a) = D.Matrix a
   m *. n = mulMM 1 NoTrans m NoTrans n
 
+instance (BLAS3 a,Show a) => Mul (Transposed D.Matrix a) (D.Matrix a) where
+  type MulRes (Transposed D.Matrix a) (D.Matrix a) = D.Matrix a
+  Transposed m *. n = mulMM 1 Trans m NoTrans n
+
+instance (BLAS3 a,Show a) => Mul (D.Matrix a) (Transposed D.Matrix a) where
+  type MulRes (D.Matrix a) (Transposed D.Matrix a) = D.Matrix a
+  m *. Transposed n = mulMM 1 NoTrans m Trans n
+
+instance (BLAS3 a,Show a) => Mul (Transposed D.Matrix a) (Transposed D.Matrix a) where
+  type MulRes (Transposed D.Matrix a) (Transposed D.Matrix a) = D.Matrix a
+  Transposed m *. Transposed n = mulMM 1 Trans m Trans n
+
+
+
+
+-- Primitive for matrix matrix multiplication
 mulMM :: (BLAS3 a,Show a) => a -> Trans -> D.Matrix a -> Trans -> D.Matrix a -> D.Matrix a
+{-# INLINE mulMM #-}
 mulMM a tm m tn n = runST $ do
   m_ <- Mat.unsafeThaw m
   n_ <- Mat.unsafeThaw n
-  r  <- MD.new (Mat.rows m, Mat.cols n)
+  r  <- MD.new (M.rowsT tm m_, M.colsT tn n_)
   M.multMM a tm m_ tn n_ 0 r
   Mat.unsafeFreeze r
