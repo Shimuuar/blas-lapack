@@ -2,7 +2,7 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE TypeFamilies #-}
--- | 
+-- |
 -- Module     : Numeric.BLAS
 -- Copyright  : Copyright (c) 2012 Aleksey Khudyakov <alexey.skladnoy@gmail.com>
 -- License    : BSD3
@@ -24,6 +24,7 @@ module Numeric.BLAS (
     -- * Matrix vector operations
   ) where
 
+import Control.Monad
 import Control.Monad.ST
 
 import Data.Complex
@@ -120,6 +121,45 @@ absIndex :: (BLAS1 a, Vector v a, MVectorBLAS (Mutable v))
 {-# INLINE absIndex #-}
 absIndex v
   = runST $ M.absIndex =<< unsafeThaw v
+
+
+
+----------------------------------------------------------------
+-- Addition
+----------------------------------------------------------------
+
+instance BLAS1 a => Add (V.Vector a) where
+  (+.) = addV
+
+instance BLAS1 a => Add (S.Vector a) where
+  (+.) = addV
+
+instance BLAS1 a => Add (D.Matrix a) where
+  (+.) = addM
+
+addV :: (BLAS1 a, Vector v a, MVectorBLAS (Mutable v))
+     => v a -> v a -> v a
+{-# INLINE addV #-}
+addV v u = runST $ do
+  v_ <- G.unsafeThaw v
+  u_ <- G.unsafeThaw u
+  r_ <- MG.clone u_
+  M.addVecScaled 1 v_ r_
+  G.unsafeFreeze r_
+
+addM :: (BLAS1 a) => D.Matrix a -> D.Matrix a -> D.Matrix a
+{-# INLINE addM #-}
+addM m1 m2 = runST $ do
+  m1_ <- Mat.unsafeThaw m1
+  m2_ <- Mat.unsafeThaw m2
+  r   <- MD.new (Mat.rows m1, Mat.cols m1)
+  forM_ [0 .. Mat.cols m1 - 1] $ \i -> do
+    let c1 = MD.getCol m1_ i
+        c2 = MD.getCol m2_ i
+        cr = MD.getCol r   i
+    M.copy           c2 cr
+    M.addVecScaled 1 c1 cr
+  Mat.unsafeFreeze r
 
 
 
