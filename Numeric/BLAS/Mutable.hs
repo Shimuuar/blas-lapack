@@ -14,7 +14,7 @@
 -- only hides pointers from plain view and provide little less cryptic
 -- names.
 module Numeric.BLAS.Mutable (
-    -- * Level 1 BLAS
+    -- * Level 1 BLAS (Vector-vector operations)
     -- ** Low level data copying
     copy
   , swap
@@ -29,24 +29,21 @@ module Numeric.BLAS.Mutable (
     -- ** Vector transformations
   , scaleVector
   , addVecScaled
-    -- * Level 2 BLAS
+    -- * Level 2 BLAS (Matrix-vector operations)
     -- ** Matrix x Vector
-  , MultMV(..)
+  , MultMV
   , multMV
-  , MultTMV(..)
+  , MultTMV
   , multTMV
     -- ** Vector x Vector
-  , unsafeCrossVV
   , crossVV
-  , unsafeCrossHVV
   , crossHVV
-    -- * Level 3 BLAS
-  , unsafeMultMM
+    -- * Level 3 BLAS (Matrix-matrix operations)
   , multMM
+    -- * Type classes and helpers
+  , MVectorBLAS(..)
   , colsT
   , rowsT
-    -- * Type classes
-  , MVectorBLAS(..)
   ) where
 
 import Control.Monad.Primitive
@@ -131,19 +128,6 @@ addVecScaled a v u
 -- Level 2 BLAS
 ----------------------------------------------------------------
 
--- | Bindings for matrix vector multiplication routines provided by
---   BLAS.
---
---   > y ← α·A·x + β·y
-class M.IsMMatrix mat a => MultMV mat a where
-  unsafeMultMV :: (PrimMonad m, MVectorBLAS v, BLAS2 a)
-               => a                   -- ^ /α/
-               -> mat (PrimState m) a -- ^ /A/
-               -> v   (PrimState m) a -- ^ /x/
-               -> a                   -- ^ /β/
-               -> v   (PrimState m) a -- ^ /y/
-               -> m ()
-
 -- | Matrix vector multiplication which does range checking
 multMV ::(PrimMonad m, MultMV mat a, MVectorBLAS v, BLAS2 a)
        => a                   -- ^ /α/
@@ -157,22 +141,6 @@ multMV a m x b y
   | blasLength x /= M.cols m = error "@@@ 1"
   | blasLength y /= M.rows m = error "@@@ 2"
   | otherwise                = unsafeMultMV a m x b y
-
-
-
--- | Bindings for matrix vector multiplication routines provided by
---   BLAS. Matrix could be transposed of conhugated.
---
---   > y ← α·op(A)·x + β·y
-class MultMV mat a => MultTMV mat a where
-  unsafeMultTMV :: (PrimMonad m, MVectorBLAS v, BLAS2 a)
-                 => a                   -- ^ /α/
-                 -> Trans               -- ^ Matrix transformation
-                 -> mat (PrimState m) a -- ^ /A/
-                 -> v   (PrimState m) a -- ^ /x/
-                 -> a                   -- ^ /β/
-                 -> v   (PrimState m) a -- ^ /y/
-                 -> m ()
 
 -- | Matrix vector multiplication which dows range checking
 multTMV ::(PrimMonad m, MultTMV mat a, MVectorBLAS v, BLAS2 a)
@@ -190,43 +158,8 @@ multTMV a t m x b y
   | otherwise                 = unsafeMultTMV a t m x b y
 
 
-instance S.Storable a => MultMV MD.MMatrix a where
-  unsafeMultMV a = unsafeMultTMV a NoTrans
-  {-# INLINE unsafeMultMV #-}
-
-instance S.Storable a => MultTMV MD.MMatrix a where
-  unsafeMultTMV a t (MD.MMatrix rows cols lda fp) x b y
-    = unsafePrimToPrim
-    $ withForeignPtr  fp          $ \pa ->
-      withForeignPtr (blasFPtr x) $ \px ->
-      withForeignPtr (blasFPtr y) $ \py ->
-        BLAS.gemv ColMajor t
-                  rows cols a pa lda
-                    px (blasStride y)
-                  b py (blasStride y)
-  {-# INLINE unsafeMultTMV #-}
-
-
 
 ----------------------------------------
-
--- | Compute
---
--- > A ← α·x·y' + A
-unsafeCrossVV
-  :: (PrimMonad m, MVectorBLAS v, BLAS2 a)
-  => a -> v (PrimState m) a -> v (PrimState m) a -> MD.MMatrix (PrimState m) a -> m ()
-{-# INLINE unsafeCrossVV #-}
-unsafeCrossVV a v u (MD.MMatrix _ _ lda fp) = do
-  unsafePrimToPrim $
-    withForeignPtr (blasFPtr v) $ \p ->
-    withForeignPtr (blasFPtr u) $ \q ->
-    withForeignPtr fp           $ \m ->
-      BLAS.geru ColMajor
-        (blasLength v) (blasLength u) a
-        p (blasStride v)
-        q (blasStride u)
-        m lda
 
 -- | Compute
 --
@@ -240,23 +173,6 @@ crossVV a v u m
   | blasLength u /= M.rows m = error "!"
   | otherwise                = unsafeCrossVV a v u m
 
--- | Compute
---
--- > A ← α·x·conjg(y') + A
-unsafeCrossHVV
-  :: (PrimMonad m, MVectorBLAS v, BLAS2 a)
-  => a -> v (PrimState m) a -> v (PrimState m) a -> MD.MMatrix (PrimState m) a -> m ()
-{-# INLINE unsafeCrossHVV #-}
-unsafeCrossHVV a v u (MD.MMatrix _ _ lda fp) = do
-  unsafePrimToPrim $
-    withForeignPtr (blasFPtr v) $ \p ->
-    withForeignPtr (blasFPtr u) $ \q ->
-    withForeignPtr fp           $ \m ->
-      BLAS.gerc ColMajor
-        (blasLength v) (blasLength u) a
-        p (blasStride v)
-        q (blasStride u)
-        m lda
 
 -- | Compute
 --
@@ -273,33 +189,9 @@ crossHVV a v u m
 
 
 
-
 ----------------------------------------------------------------
 -- Level 3 BLAS
 ----------------------------------------------------------------
-
--- | Unsafe multiplication of matrices:
---
--- > C ← α·op(A)·op(B) + β·C
-unsafeMultMM :: (PrimMonad m, BLAS3 a)
-             => a
-             -> Trans
-             -> MD.MMatrix (PrimState m) a
-             -> Trans
-             -> MD.MMatrix (PrimState m) a
-             -> a
-             -> MD.MMatrix (PrimState m) a
-             -> m ()
-{-# INLINE unsafeMultMM #-}
-unsafeMultMM a ta ma@(MD.MMatrix _ _ lda fpa) tb (MD.MMatrix _ _ ldb fpb) b (MD.MMatrix rows cols ldc fpc)
-  = unsafePrimToPrim
-  $ withForeignPtr fpa $ \pa ->
-    withForeignPtr fpb $ \pb ->
-    withForeignPtr fpc $ \pc ->
-      BLAS.gemm ColMajor ta tb
-                rows cols (colsT ta ma)
-                a pa lda pb ldb
-                b pc ldc
 
 -- | Unsafe multiplication of matrices:
 --

@@ -20,7 +20,7 @@
 -- don't have prefix. Checked vertsions are provided by
 -- 'Numeric.BLAS.Mutable' module.
 module Numeric.BLAS.Mutable.Unsafe (
-    -- * Level 1 BLAS
+    -- * Level 1 BLAS (Vector-vector operations)
     -- ** Low level data copying
     unsafeCopy
   , unsafeSwap
@@ -33,6 +33,13 @@ module Numeric.BLAS.Mutable.Unsafe (
     -- ** Vector transformations
   , scaleVector
   , unsafeAddVecScaled
+    -- * Level 2 BLAS (Matrix-vector operations)
+  , MultMV(..)
+  , MultTMV(..)
+  , unsafeCrossVV
+  , unsafeCrossHVV
+    -- * Level 3 BLAS (Matrix-matrix operations)
+  , unsafeMultMM
     -- * Type classes and helpers
   , MVectorBLAS(..)
   , colsT
@@ -139,6 +146,124 @@ unsafeAddVecScaled a v u
     n  = blasLength v ; m  = blasLength u
     s1 = blasStride v ; s2 = blasStride u
     fp = blasFPtr   v ; fq = blasFPtr   u
+
+
+
+----------------------------------------------------------------
+-- Level 2 BLAS
+----------------------------------------------------------------
+
+-- | Bindings for matrix vector multiplication routines provided by
+--   BLAS.
+--
+--   > y ← α·A·x + β·y
+class M.IsMMatrix mat a => MultMV mat a where
+  unsafeMultMV :: (PrimMonad m, MVectorBLAS v, BLAS2 a)
+               => a                   -- ^ /α/
+               -> mat (PrimState m) a -- ^ /A/
+               -> v   (PrimState m) a -- ^ /x/
+               -> a                   -- ^ /β/
+               -> v   (PrimState m) a -- ^ /y/
+               -> m ()
+
+
+-- | Bindings for matrix vector multiplication routines provided by
+--   BLAS. Matrix could be transposed of conhugated.
+--
+--   > y ← α·op(A)·x + β·y
+class MultMV mat a => MultTMV mat a where
+  unsafeMultTMV :: (PrimMonad m, MVectorBLAS v, BLAS2 a)
+                 => a                   -- ^ /α/
+                 -> Trans               -- ^ Matrix transformation
+                 -> mat (PrimState m) a -- ^ /A/
+                 -> v   (PrimState m) a -- ^ /x/
+                 -> a                   -- ^ /β/
+                 -> v   (PrimState m) a -- ^ /y/
+                 -> m ()
+
+
+instance S.Storable a => MultMV MD.MMatrix a where
+  unsafeMultMV a = unsafeMultTMV a NoTrans
+  {-# INLINE unsafeMultMV #-}
+
+instance S.Storable a => MultTMV MD.MMatrix a where
+  unsafeMultTMV a t (MD.MMatrix rows cols lda fp) x b y
+    = unsafePrimToPrim
+    $ withForeignPtr  fp          $ \pa ->
+      withForeignPtr (blasFPtr x) $ \px ->
+      withForeignPtr (blasFPtr y) $ \py ->
+        BLAS.gemv ColMajor t
+                  rows cols a pa lda
+                    px (blasStride y)
+                  b py (blasStride y)
+  {-# INLINE unsafeMultTMV #-}
+
+
+-- | Compute
+--
+-- > A ← α·x·y' + A
+unsafeCrossVV
+  :: (PrimMonad m, MVectorBLAS v, BLAS2 a)
+  => a -> v (PrimState m) a -> v (PrimState m) a -> MD.MMatrix (PrimState m) a -> m ()
+{-# INLINE unsafeCrossVV #-}
+unsafeCrossVV a v u (MD.MMatrix _ _ lda fp) = do
+  unsafePrimToPrim $
+    withForeignPtr (blasFPtr v) $ \p ->
+    withForeignPtr (blasFPtr u) $ \q ->
+    withForeignPtr fp           $ \m ->
+      BLAS.geru ColMajor
+        (blasLength v) (blasLength u) a
+        p (blasStride v)
+        q (blasStride u)
+        m lda
+
+
+-- | Compute
+--
+-- > A ← α·x·conjg(y') + A
+unsafeCrossHVV
+  :: (PrimMonad m, MVectorBLAS v, BLAS2 a)
+  => a -> v (PrimState m) a -> v (PrimState m) a -> MD.MMatrix (PrimState m) a -> m ()
+{-# INLINE unsafeCrossHVV #-}
+unsafeCrossHVV a v u (MD.MMatrix _ _ lda fp) = do
+  unsafePrimToPrim $
+    withForeignPtr (blasFPtr v) $ \p ->
+    withForeignPtr (blasFPtr u) $ \q ->
+    withForeignPtr fp           $ \m ->
+      BLAS.gerc ColMajor
+        (blasLength v) (blasLength u) a
+        p (blasStride v)
+        q (blasStride u)
+        m lda
+
+
+
+----------------------------------------------------------------
+-- Level 3 BLAS
+----------------------------------------------------------------
+
+-- | Unsafe multiplication of matrices:
+--
+-- > C ← α·op(A)·op(B) + β·C
+unsafeMultMM :: (PrimMonad m, BLAS3 a)
+             => a
+             -> Trans
+             -> MD.MMatrix (PrimState m) a
+             -> Trans
+             -> MD.MMatrix (PrimState m) a
+             -> a
+             -> MD.MMatrix (PrimState m) a
+             -> m ()
+{-# INLINE unsafeMultMM #-}
+unsafeMultMM a ta ma@(MD.MMatrix _ _ lda fpa) tb (MD.MMatrix _ _ ldb fpb) b (MD.MMatrix rows cols ldc fpc)
+  = unsafePrimToPrim
+  $ withForeignPtr fpa $ \pa ->
+    withForeignPtr fpb $ \pb ->
+    withForeignPtr fpc $ \pc ->
+      BLAS.gemm ColMajor ta tb
+                rows cols (colsT ta ma)
+                a pa lda pb ldb
+                b pc ldc
 
 
 
