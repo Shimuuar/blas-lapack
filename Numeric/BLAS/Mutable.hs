@@ -18,6 +18,8 @@ module Numeric.BLAS.Mutable (
     -- ** Low level data copying
     copy
   , swap
+  , unsafeCopy
+  , unsafeSwap
     -- ** \"Pure\" functions
   , dotProduct
   , hermitianProd
@@ -52,17 +54,16 @@ import Control.Monad.Primitive
 import Foreign.Ptr
 import Foreign.ForeignPtr
 
-import qualified Numeric.BLAS.Bindings as BLAS
-import           Numeric.BLAS.Bindings   (BLAS1,BLAS2,BLAS3,RealType,
-                                          RowOrder(..), Trans(..)
-                                         )
-
 import qualified Data.Vector.Storable                 as S
 import qualified Data.Vector.Storable.Strided.Mutable as V
 import qualified Data.Matrix.Generic.Mutable          as M
 import qualified Data.Matrix.Dense.Mutable            as MD
 
-
+import qualified Numeric.BLAS.Bindings as BLAS
+import           Numeric.BLAS.Bindings   (BLAS1,BLAS2,BLAS3,RealType,
+                                          RowOrder(..), Trans(..)
+                                         )
+import Numeric.BLAS.Mutable.Unsafe
 
 
 
@@ -71,76 +72,43 @@ import qualified Data.Matrix.Dense.Mutable            as MD
 -- BLAS level 1
 ----------------------------------------------------------------
 
+-- Copying -----------------------------------------------------
+
 -- | Copy content of vector. Vectors must have same length.
 copy :: (PrimMonad m, BLAS1 a, MVectorBLAS v)
      => v (PrimState m) a -- ^ Source
      -> v (PrimState m) a -- ^ Destination
      -> m ()
 {-# INLINE copy #-}
-copy = twoVecOp BLAS.copy
+copy v u
+  | blasLength v /= blasLength u = error "Numeric.BLAS.Mutable.copy: vector length don't match"
+  | otherwise                    = unsafeCopy v u
 
 
 -- | Swap content of vectors. Vectors must have same length.
 swap :: (PrimMonad m, BLAS1 a, MVectorBLAS v)
-     => v (PrimState m) a
-     -> v (PrimState m) a
-     -> m ()
+     => v (PrimState m) a -> v (PrimState m) a -> m ()
 {-# INLINE swap #-}
-swap = twoVecOp BLAS.swap
-
+swap v u
+  | blasLength v /= blasLength u = error "Numeric.BLAS.Mutable.swap: vector length don't match"
+  | otherwise                    = unsafeSwap v u
 
 -- | Scalar product of vectors
 dotProduct :: (PrimMonad m, BLAS1 a, MVectorBLAS v)
-           => v (PrimState m) a
-           -> v (PrimState m) a
-           -> m a
+                 => v (PrimState m) a -> v (PrimState m) a -> m a
 {-# INLINE dotProduct #-}
-dotProduct = twoVecOp BLAS.dotu
+dotProduct v u
+  | blasLength v /= blasLength u = error "Numeric.BLAS.Mutable.dotProduct: vector length don't match"
+  | otherwise                    = unsafeDotProduct v u
 
 
 -- | Scalar product of vectors
 hermitianProd :: (PrimMonad m, BLAS1 a, MVectorBLAS v)
-              => v (PrimState m) a
-              -> v (PrimState m) a
-              -> m a
+                    => v (PrimState m) a -> v (PrimState m) a -> m a
 {-# INLINE hermitianProd #-}
-hermitianProd = twoVecOp BLAS.dotc
-
-
--- | Calculate vector norm
-vectorNorm :: (PrimMonad m, BLAS1 a, MVectorBLAS v)
-           => v (PrimState m) a
-           -> m (RealType a)
-{-# INLINE vectorNorm #-}
-vectorNorm = oneVecOp BLAS.nrm2
-
-
--- | Sum of absolute values of vector
-absSum :: (PrimMonad m, BLAS1 a, MVectorBLAS v)
-       => v (PrimState m) a
-       -> m (RealType a)
-{-# INLINE absSum #-}
-absSum = oneVecOp BLAS.asum
-
-
--- | Index f element with largest absolute value.
-absIndex :: (PrimMonad m, BLAS1 a, MVectorBLAS v)
-       => v (PrimState m) a
-       -> m Int
-{-# INLINE absIndex #-}
-absIndex = oneVecOp BLAS.iamax
-
-
--- | Scale all element of vector by some value. Vector is modified in
---   place.
-scaleVector :: (PrimMonad m, BLAS1 a, MVectorBLAS v)
-            => a
-            -> v (PrimState m) a
-            -> m ()
-{-# INLINE scaleVector #-}
-scaleVector a v
-  = unsafePrimToPrim
-  $ withForeignPtr (blasFPtr v) $ \p -> BLAS.scal (blasLength v) a p (blasStride v)
+hermitianProd v u
+  | blasLength v /= blasLength u = error "Numeric.BLAS.Mutable.dotProduct: vector length don't match"
+  | otherwise                    = unsafeHermitianProd v u
 
 
 -- | Add scaled vector to another. Target vector modified in place
@@ -153,15 +121,9 @@ addVecScaled :: (PrimMonad m, BLAS1 a, MVectorBLAS v)
              -> m ()
 {-# INLINE addVecScaled #-}
 addVecScaled a v u
-  | n /= m    = error "Numeric.BLAS.Mutable.addVecScaled: "
-  | otherwise = unsafePrimToPrim
-              $ withForeignPtr fp $ \p ->
-                withForeignPtr fq $ \q ->
-                  BLAS.axpy n a p s1 q s2
-  where
-    n  = blasLength v ; m  = blasLength u
-    s1 = blasStride v ; s2 = blasStride u
-    fp = blasFPtr   v ; fq = blasFPtr   u
+  | blasLength v /= blasLength u = error "Numeric.BLAS.Mutable.addVecScaled: vector length don't match"
+  | otherwise                    = unsafeAddVecScaled a v u
+
 
 
 
@@ -372,68 +334,3 @@ rowsT :: M.IsMMatrix mat a => Trans -> mat s a -> Int
 {-# INLINE rowsT #-}
 rowsT NoTrans m = M.rows m
 rowsT _       m = M.cols m
-
-
-
-----------------------------------------------------------------
--- Helpers
-----------------------------------------------------------------
-
-twoVecOp :: (PrimMonad m, MVectorBLAS v, MVectorBLAS u)
-         => (Int -> Ptr a -> Int -> Ptr a -> Int -> IO b)
-         -> v (PrimState m) a
-         -> u (PrimState m) a
-         -> m b
-{-# INLINE twoVecOp #-}
-twoVecOp func v u
-  | n /= m    = error "Numeric.BLAS.Mutable.OOPS!"
-  | otherwise = unsafePrimToPrim
-              $ withForeignPtr fp $ \p ->
-                withForeignPtr fq $ \q ->
-                  func n p (blasStride v)
-                         q (blasStride u)
-  where
-    n  = blasLength v  ; m  = blasLength u
-    fp = blasFPtr   v  ; fq = blasFPtr   u
-
-oneVecOp :: (PrimMonad m, MVectorBLAS v)
-         => (Int -> Ptr a -> Int -> IO b)
-         -> v (PrimState m) a
-         -> m b
-{-# INLINE oneVecOp #-}
-oneVecOp fun v
-  = unsafePrimToPrim
-  $ withForeignPtr (blasFPtr v) $ \p -> fun (blasLength v) p (blasStride v)
-
-
-
-----------------------------------------------------------------
--- Type classes
-----------------------------------------------------------------
-
--- | Type class for mutable vectors which could be used with BLAS.
-class MVectorBLAS v where
-  -- | Length of vector
-  blasLength :: v s a -> Int
-  -- | Stride between elements
-  blasStride :: v s a -> Int
-  -- | Pointer to data.
-  blasFPtr   :: v s a -> ForeignPtr a
-
--- | Strided vectors
-instance MVectorBLAS V.MVector where
-  blasLength (V.MVector n _ _) = n
-  blasStride (V.MVector _ s _) = s
-  blasFPtr   (V.MVector _ _ p) = p
-  {-# INLINE blasLength #-}
-  {-# INLINE blasStride #-}
-  {-# INLINE blasFPtr   #-}
-
--- | Normal storable vectors
-instance MVectorBLAS S.MVector where
-  blasLength (S.MVector n _) = n
-  blasStride  _              = 1
-  blasFPtr   (S.MVector _ p) = p
-  {-# INLINE blasLength #-}
-  {-# INLINE blasStride #-}
-  {-# INLINE blasFPtr   #-}

@@ -39,5 +39,6 @@ Library
     -- High level BLAS interface
     Numeric.BLAS
     Numeric.BLAS.Mutable
+    Numeric.BLAS.Mutable.Unsafe
   Other-modules:
     Data.Internal
