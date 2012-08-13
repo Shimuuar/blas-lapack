@@ -14,6 +14,7 @@
 module Data.Vector.Storable.Strided (
     Vector
   , stride
+  , fromStorable
     -- * Raw pointers
   , unsafeFromForeignPtr
   , unsafeWithVector
@@ -24,7 +25,8 @@ import Control.DeepSeq               ( NFData )
 
 import Data.Typeable                 (Typeable)
 import Data.Vector.Storable.Internal
-import qualified Data.Vector.Generic as G
+import qualified Data.Vector.Generic  as G
+import qualified Data.Vector.Storable as S
 
 import Foreign.Marshal.Array ( advancePtr )
 import Foreign.Ptr
@@ -84,6 +86,14 @@ instance Storable a => G.Vector Vector a where
 
   {-# INLINE elemseq #-}
   elemseq _ = seq
+
+
+-- | Create strided vector from ordinary storable vector. They will
+--   share same memory buffer.
+fromStorable :: Storable a => S.Vector a -> Vector a
+{-# INLINE fromStorable #-}
+fromStorable v
+  = Vector n 1 fp where (fp,n) = S.unsafeToForeignPtr0 v
 
 
 
