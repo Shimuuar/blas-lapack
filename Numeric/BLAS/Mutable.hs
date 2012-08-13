@@ -323,14 +323,3 @@ multMM a ta ma tb mb b mc
     rowA = rowsT ta ma ; colA = colsT ta ma
     rowB = rowsT tb mb ; colB = colsT tb mb
     rowC = M.rows   mc ; colC = M.cols   mc
-
-
-colsT :: M.IsMMatrix mat a => Trans -> mat s a -> Int
-{-# INLINE colsT #-}
-colsT NoTrans m = M.cols m
-colsT _       m = M.rows m
-
-rowsT :: M.IsMMatrix mat a => Trans -> mat s a -> Int
-{-# INLINE rowsT #-}
-rowsT NoTrans m = M.rows m
-rowsT _       m = M.cols m

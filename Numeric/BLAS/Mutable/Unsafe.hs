@@ -33,8 +33,10 @@ module Numeric.BLAS.Mutable.Unsafe (
     -- ** Vector transformations
   , scaleVector
   , unsafeAddVecScaled
-    -- * Type classes
+    -- * Type classes and helpers
   , MVectorBLAS(..)
+  , colsT
+  , rowsT
   ) where
 
 import Control.Monad.Primitive
@@ -198,3 +200,15 @@ oneVecOp :: (PrimMonad m, MVectorBLAS v)
 oneVecOp fun v
   = unsafePrimToPrim
   $ withForeignPtr (blasFPtr v) $ \p -> fun (blasLength v) p (blasStride v)
+
+-- | Number of columns of matrix with transformation applied
+colsT :: M.IsMMatrix mat a => Trans -> mat s a -> Int
+{-# INLINE colsT #-}
+colsT NoTrans m = M.cols m
+colsT _       m = M.rows m
+
+-- | Number of rows of matrix with transformation applied
+rowsT :: M.IsMMatrix mat a => Trans -> mat s a -> Int
+{-# INLINE rowsT #-}
+rowsT NoTrans m = M.rows m
+rowsT _       m = M.cols m
