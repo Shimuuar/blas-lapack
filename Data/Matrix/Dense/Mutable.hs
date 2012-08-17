@@ -22,11 +22,12 @@ module Data.Matrix.Dense.Mutable (
   , unsafeGetCol
   ) where
 
+import Control.Monad
 import Control.Monad.Primitive
 
 import Data.Typeable (Typeable)
-import Data.Vector.Storable.Internal
--- import qualified Data.Vector.Generic.Mutable as M
+import           Data.Vector.Storable.Internal
+import qualified Data.Vector.Generic.Mutable as M
 
 -- import Foreign.Ptr
 import Foreign.Marshal.Array ( advancePtr )
@@ -75,6 +76,14 @@ instance Storable a => IsMMatrix MMatrix a where
     = unsafePrimToPrim
     $ withForeignPtr fp $ \p -> pokeElemOff p (i + j*lda) x
   {-# INLINE basicUnsafeWrite #-}
+  basicCloneShape m
+    = new (rows m, cols m)
+  {-# INLINE basicCloneShape #-}
+  basicClone m = do
+    q <- basicCloneShape m
+    forM_ [0 .. cols m - 1] $ \i ->
+      M.unsafeCopy (getCol q i) (getCol m i)
+    return q
 
 
 

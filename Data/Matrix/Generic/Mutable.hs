@@ -21,6 +21,8 @@ module Data.Matrix.Generic.Mutable (
   , write
   , unsafeRead
   , unsafeWrite
+  , cloneShape
+  , clone
     -- * Newtype wrappers
   , TransposedM(..)
   , ConjugatedM(..)
@@ -52,7 +54,13 @@ class IsMMatrix mat a where
   basicUnsafeRead :: PrimMonad m => mat (PrimState m) a -> (Int,Int) -> m a
   -- | Write element at given index.
   basicUnsafeWrite :: PrimMonad m => mat (PrimState m) a -> (Int,Int) -> a -> m ()
-
+  -- | Create matrix with same dimensions. Elements' values are undefined
+  --
+  --   Unlike vector which have only length there are many kinds of
+  --   matrices. it's not possible to write such function from simpler ones.
+  basicCloneShape :: PrimMonad m => mat (PrimState m) a -> m (mat (PrimState m) a)
+  -- | Create copy of matrix.
+  basicClone :: PrimMonad m => mat (PrimState m) a -> m (mat (PrimState m) a)
 
 
 ----------------------------------------------------------------
@@ -103,7 +111,6 @@ write m i@(!r,!c)
   | isIndexMutable m i   = basicUnsafeWrite m i
   | otherwise            = error "Numeric.BLAS.Matrix.Mutable.write: index is not mutable"
 
-
 -- | Read element from matrix without range checking
 unsafeRead :: (PrimMonad m, IsMMatrix mat a) => mat (PrimState m) a -> (Int, Int) -> m a
 {-# INLINE unsafeRead #-}
@@ -113,6 +120,19 @@ unsafeRead = basicUnsafeRead
 unsafeWrite :: (PrimMonad m, IsMMatrix mat a) => mat (PrimState m) a -> (Int, Int) -> a -> m ()
 {-# INLINE unsafeWrite #-}
 unsafeWrite = basicUnsafeWrite
+
+-- | Create matrix with same dimensions. Elements' values are undefined
+--
+--   Unlike vector which have only length there are many kinds of
+--   matrices. it's not possible to write such function from simpler ones.
+cloneShape :: (PrimMonad m, IsMMatrix mat a) => mat (PrimState m) a -> m (mat (PrimState m) a)
+{-# INLINE cloneShape #-}
+cloneShape = basicCloneShape
+
+-- | Create copy of matrix.
+clone :: (PrimMonad m, IsMMatrix mat a) => mat (PrimState m) a -> m (mat (PrimState m) a)
+{-# INLINE clone #-}
+clone = basicClone
 
 
 
@@ -134,8 +154,10 @@ instance IsMMatrix mat a => IsMMatrix (TransposedM mat) a where
   {-# INLINE basicUnsafeRead #-}
   basicUnsafeWrite    (TransposedM m) (i,j) x = unsafeWrite    m (j,i) x
   {-# INLINE basicUnsafeWrite #-}
-
-
+  basicCloneShape     (TransposedM m) = do { r <- basicCloneShape m; return $ TransposedM r }
+  {-# INLINE basicCloneShape #-}
+  basicClone          (TransposedM m) = do { r <- basicCloneShape m; return $ TransposedM r }
+  {-# INLINE basicClone #-}
 
 -- | Conjugate-transposed matrix
 newtype ConjugatedM mat s a = ConjugatedM { unConjugate :: mat s a }
@@ -155,3 +177,7 @@ instance (IsMMatrix mat (Complex a), RealFloat a) => IsMMatrix (ConjugatedM mat)
     | j >= i    = unsafeWrite m (j,i) x
     | otherwise = unsafeWrite m (j,i) $! conjugate x
   {-# INLINE basicUnsafeWrite #-}
+  basicCloneShape     (ConjugatedM m) = do { r <- basicCloneShape m; return $ ConjugatedM r }
+  {-# INLINE basicCloneShape #-}
+  basicClone          (ConjugatedM m) = do { r <- basicCloneShape m; return $ ConjugatedM r }
+  {-# INLINE basicClone #-}
