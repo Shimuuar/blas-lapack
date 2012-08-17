@@ -106,7 +106,7 @@ copyArrayStride :: Storable a
                 -> Int          -- Stride for destination
                 -> IO ()
 {-# INLINE copyArrayStride #-}
-copyArrayStride n' src' ss dst' sd 
+copyArrayStride n' dst' sd src' ss
   = doCopy n' src' dst'
   where
     doCopy 0 _   _   = return ()
