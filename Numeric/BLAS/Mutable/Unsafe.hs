@@ -42,6 +42,9 @@ module Numeric.BLAS.Mutable.Unsafe (
   , unsafeMultMM
     -- * Type classes and helpers
   , MVectorBLAS(..)
+  , BLAS1
+  , BLAS2
+  , BLAS3
   , colsT
   , rowsT
   ) where
