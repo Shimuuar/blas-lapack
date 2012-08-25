@@ -42,6 +42,10 @@ module Numeric.BLAS.Mutable (
   , multMM
     -- * Type classes and helpers
   , MVectorBLAS(..)
+  , BLAS1
+  , BLAS2
+  , BLAS3
+    -- ** Helpers
   , colsT
   , rowsT
   ) where
