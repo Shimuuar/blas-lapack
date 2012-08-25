@@ -80,7 +80,7 @@ import Debug.Trace
 class Clonable m a where
   cloneShape :: m s a -> ST s (m s a)
   clone      :: m s a -> ST s (m s a)
-  
+
 class Clonable (Mutable m) a => Freeze m a where
   unsafeFreeze :: Mutable m s a -> ST s (m a)
   unsafeThaw   :: m a -> ST s (Mutable m s a)
@@ -137,29 +137,36 @@ instance BLAS1 a => AddM MS.MVector a where
 -- Expression
 ----------------------------------------------------------------
 
-
+-- | Expression tree to be simplified
 data Expr m a where
-  -- Literal value. Could not be altered.
+  -- | Literal value. Could not be altered.
   Lit    :: Freeze m a => m a -> Expr m a
-  -- Addition
+  -- | Addition
   Add    :: (Freeze m a, AddM (Mutable m) a)
          => Expr m a -> Expr m a -> Expr m a
-  -- Scalar-X muliplication
+  -- | Scalar-X muliplication
   Scale  :: (Freeze m a, BLAS1 a, Scalable (Mutable m) a)
          => a -> Expr m a -> Expr m a
-  -- Matrix-vector muliplication
+  -- | vector x transposed vector => matrix
+  VecT   :: (Freeze v a, MVectorBLAS (Mutable v), BLAS2 a)
+         => Expr v a -> Expr v a -> Expr MatD.Matrix a
+  -- | vector x conjugate transposed vector => matrix
+  VecH   :: (Freeze v a, MVectorBLAS (Mutable v), BLAS2 a)
+         => Expr v a -> Expr v a -> Expr MatD.Matrix a
+  -- | Matrix-vector multiplication
   MulMV  :: ( MultMV (Mutable mat) a
             , MVectorBLAS (Mutable v), G.Vector v a
             , BLAS2 a
-            , Freeze mat a, Freeze v a 
+            , Freeze mat a, Freeze v a
             )
          => Expr mat a -> Expr v a -> Expr v a
+  -- | Transformed matrix-vector multiplication
   MulTMV :: ( MultTMV (Mutable mat) a
             , MVectorBLAS (Mutable v), G.Vector v a
             , BLAS2 a
             , Freeze mat a, Freeze v a )
          => Trans -> Expr mat a -> Expr v a -> Expr v a
-  -- Matrix-matrix multiplication
+  -- | Matrix-matrix multiplication for dense matrices
   MulMM :: BLAS3 a
         => Trans -> Expr MatD.Matrix a
         -> Trans -> Expr MatD.Matrix a
@@ -177,6 +184,9 @@ evalST (Add x y) = do
   y_ <- evalST y
   addM x_ y_
   return y_
+-- Vector-vector
+evalST (VecT v u) = evalVVT 1 v u
+evalST (VecH v u) = evalVVH 1 v u
 -- Matrix-vector
 evalST (Scale a (MulMV m v)) = evalMV a m v
 evalST          (MulMV m v)  = evalMV 1 m v
@@ -199,13 +209,6 @@ evalST (Scale a x) = do
 
 
 
-dumpExpressionTree :: Expr m a -> String
-dumpExpressionTree (Lit _)     = "_"
-dumpExpressionTree (Add   x y) = "(" ++ dumpExpressionTree x ++ ") + (" ++ dumpExpressionTree y ++ ")"
-dumpExpressionTree (Scale _ y) = "S * ?(" ++ dumpExpressionTree y ++ ")"
-dumpExpressionTree (MulMV    x y) = "M(" ++ dumpExpressionTree x ++ ") * V(" ++ dumpExpressionTree y ++ ")"
-dumpExpressionTree (MulTMV _ x y) = "TM(" ++ dumpExpressionTree x ++ ") * V(" ++ dumpExpressionTree y ++ ")"
-dumpExpressionTree (MulMM _ x _ y) = "M(" ++ dumpExpressionTree x ++ ") * M(" ++ dumpExpressionTree y ++ ")"
 
 -- Get mutable data structure. It must not be modifed.
 pull :: Expr m a -> ST s (Mutable m s a)
@@ -227,9 +230,26 @@ eval x = runST $ do
 -- Real evals
 ----------------------------------------------------------------
 
+evalVVT :: ( BLAS2 a, MVectorBLAS (Mutable v) )
+        => a -> Expr v a -> Expr v a -> ST s (MMatD.MMatrix s a)
+evalVVT a v u = do
+  v_ <- pull v
+  u_ <- pull u
+  m_ <- MMatD.new (blasLength v_, blasLength u_)
+  crossVV a v_ u_ m_
+  return m_
+
+evalVVH :: ( BLAS2 a, MVectorBLAS (Mutable v) )
+        => a -> Expr v a -> Expr v a -> ST s (MMatD.MMatrix s a)
+evalVVH a v u = do
+  v_ <- pull v
+  u_ <- pull u
+  m_ <- MMatD.new (blasLength v_, blasLength u_)
+  crossHVV a v_ u_ m_
+  return m_
 
 evalMV :: ( MultMV (Mutable mat) a, MVectorBLAS (Mutable v), BLAS2 a
-          , Freeze mat a, Freeze v a 
+          , Freeze mat a, Freeze v a
           , G.Vector v a
           )
        => a -> Expr mat a -> Expr v a -> ST s (Mutable v s a)
@@ -254,7 +274,7 @@ evalTMV a t m v = do
 ----------------------------------------------------------------
 --
 ----------------------------------------------------------------
-  
+
 dumpVec :: (MVectorBLAS v, Show a, MS.Storable a) => v s a -> IO ()
 dumpVec v = do
   print $ V.unsafeFromForeignPtr (blasLength v) (blasStride v) (blasFPtr v)
@@ -262,3 +282,13 @@ dumpVec v = do
 
 boogie :: v s a -> v RealWorld a
 boogie = unsafeCoerce
+
+dumpExpressionTree :: Expr m a -> String
+dumpExpressionTree (Lit _)     = "_"
+dumpExpressionTree (Add   x y) = "(" ++ dumpExpressionTree x ++ ") + (" ++ dumpExpressionTree y ++ ")"
+dumpExpressionTree (Scale _ y) = "S * ?(" ++ dumpExpressionTree y ++ ")"
+dumpExpressionTree (VecT v u)  = "==="
+dumpExpressionTree (VecH v u)  = "==="
+dumpExpressionTree (MulMV    x y) = "M(" ++ dumpExpressionTree x ++ ") * V(" ++ dumpExpressionTree y ++ ")"
+dumpExpressionTree (MulTMV _ x y) = "TM(" ++ dumpExpressionTree x ++ ") * V(" ++ dumpExpressionTree y ++ ")"
+dumpExpressionTree (MulMM _ x _ y) = "M(" ++ dumpExpressionTree x ++ ") * M(" ++ dumpExpressionTree y ++ ")"
