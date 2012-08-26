@@ -84,6 +84,9 @@ conj :: mat a -> Conjugated mat a
 {-# INLINE conj #-}
 conj  = Conjugated
 
+infixl 6 .+.
+infixl 7 .*., *.
+
 
 
 ----------------------------------------------------------------

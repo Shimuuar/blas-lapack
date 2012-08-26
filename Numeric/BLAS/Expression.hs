@@ -4,6 +4,7 @@
 {-# LANGUAGE Rank2Types #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GADTs            #-}
+{-# LANGUAGE PatternGuards #-}
 module Numeric.BLAS.Expression where
 
 import Control.Monad
@@ -176,38 +177,57 @@ data Expr m a where
 -- | Evaluate expression. Returned expression could be mutated in
 --   place or unsafe-freezed.
 evalST :: Expr m a -> ST s (Mutable m s a)
--- RULES
+-- Reduce double scale
 evalST (Scale a (Scale b e)) = evalST $ Scale (a*b) e
--- Addition
-evalST (Add x y) = do
-  x_ <- evalST x
-  y_ <- evalST y
-  addM x_ y_
-  return y_
--- Vector-vector
-evalST (VecT v u) = evalVVT 1 v u
-evalST (VecH v u) = evalVVH 1 v u
--- Matrix-vector
+--
+-- Vector-vector ⇒ matrix
+evalST (Scale a (VecT v u)) = evalVVT a v u
+evalST          (VecT v u)  = evalVVT 1 v u
+evalST (Scale a (VecH v u)) = evalVVH a v u
+evalST          (VecH v u)  = evalVVH 1 v u
+--
+-- ## Matrix-vector
+--
+-- We want to modify vector in place if it's possible. Since addition
+-- operator is left associative we expect that temporary will appear
+-- on the left
+evalST (Add          u           (MulMV m v))  | Just u_ <- mutable u = inplaceEvalMV 1 m v 1 =<< u_
+evalST (Add          u  (Scale α (MulMV m v))) | Just u_ <- mutable u = inplaceEvalMV α m v 1 =<< u_
+evalST (Add (Scale β u)          (MulMV m v))  | Just u_ <- mutable u = inplaceEvalMV 1 m v β =<< u_
+evalST (Add (Scale β u) (Scale α (MulMV m v))) | Just u_ <- mutable u = inplaceEvalMV α m v β =<< u_
+-- Here we must allocate vector
 evalST (Scale a (MulMV m v)) = evalMV a m v
 evalST          (MulMV m v)  = evalMV 1 m v
--- Matrix-vector 2
+-- Same for operations with transformation
+evalST (Add          u           (MulTMV t m v))  | Just u_ <- mutable u = inplaceEvalTMV 1 t m v 1 =<< u_
+evalST (Add          u  (Scale α (MulTMV t m v))) | Just u_ <- mutable u = inplaceEvalTMV α t m v 1 =<< u_
+evalST (Add (Scale β u)          (MulTMV t m v))  | Just u_ <- mutable u = inplaceEvalTMV 1 t m v β =<< u_
+evalST (Add (Scale β u) (Scale α (MulTMV t m v))) | Just u_ <- mutable u = inplaceEvalTMV α t m v β =<< u_
+--
 evalST (Scale a (MulTMV t m v)) = evalTMV a t m v
 evalST          (MulTMV t m v)  = evalTMV 1 t m v
+--
 -- Matrix-matrix
-evalST (MulMM tm m tn n) = do
-  m_ <- evalST m
-  n_ <- evalST n
-  r  <- MMatD.new (rowsT tm m_, colsT tn n_)
-  multMM 1 tm m_ tn n_ 0 r
-  return r
--- TERMINALS
+evalST (Scale a (MulMM tm m tn n)) = evalMM a tm m tn n
+evalST          (MulMM tm m tn n)  = evalMM 1 tm m tn n
+--
+-- Fallbacks
 evalST (Lit     e) = clone =<< unsafeThaw e
 evalST (Scale a x) = do
   m <- evalST x
   scale a m
   return m
+evalST (Add x y) = do
+  x_ <- evalST x
+  y_ <- evalST y
+  addM x_ y_
+  return y_
 
 
+--
+mutable :: Expr m a -> Maybe (ST s (Mutable m s a))
+mutable (Lit _) = Nothing
+mutable x       = Just $ evalST x
 
 
 -- Get mutable data structure. It must not be modifed.
@@ -230,8 +250,11 @@ eval x = runST $ do
 -- Real evals
 ----------------------------------------------------------------
 
-evalVVT :: ( BLAS2 a, MVectorBLAS (Mutable v) )
-        => a -> Expr v a -> Expr v a -> ST s (MMatD.MMatrix s a)
+-- Vector-vector^T multiplication
+evalVVT
+  :: ( BLAS2 a, MVectorBLAS (Mutable v) )
+  => a -> Expr v a -> Expr v a -> ST s (MMatD.MMatrix s a)
+{-# INLINE evalVVT #-}
 evalVVT a v u = do
   v_ <- pull v
   u_ <- pull u
@@ -239,8 +262,11 @@ evalVVT a v u = do
   crossVV a v_ u_ m_
   return m_
 
-evalVVH :: ( BLAS2 a, MVectorBLAS (Mutable v) )
-        => a -> Expr v a -> Expr v a -> ST s (MMatD.MMatrix s a)
+-- Vector-vector^+ multiplication
+evalVVH
+  :: ( BLAS2 a, MVectorBLAS (Mutable v) )
+  => a -> Expr v a -> Expr v a -> ST s (MMatD.MMatrix s a)
+{-# INLINE evalVVH #-}
 evalVVH a v u = do
   v_ <- pull v
   u_ <- pull u
@@ -248,11 +274,11 @@ evalVVH a v u = do
   crossHVV a v_ u_ m_
   return m_
 
-evalMV :: ( MultMV (Mutable mat) a, MVectorBLAS (Mutable v), BLAS2 a
-          , Freeze mat a, Freeze v a
-          , G.Vector v a
-          )
-       => a -> Expr mat a -> Expr v a -> ST s (Mutable v s a)
+-- Matrix-vector multiplication
+evalMV
+  :: (BLAS2 a, MultMV (Mutable mat) a, MVectorBLAS (Mutable v), G.Vector v a)
+  => a -> Expr mat a -> Expr v a -> ST s (Mutable v s a)
+{-# INLINE evalMV #-}
 evalMV a m v = do
   m_ <- pull m
   v_ <- pull v
@@ -260,15 +286,55 @@ evalMV a m v = do
   multMV a m_ v_ 0 r_
   return r_
 
-evalTMV :: ( MultTMV (Mutable mat) a, MVectorBLAS (Mutable v), BLAS2 a, G.Vector v a
-           , Freeze mat a, Freeze v a )
-        => a -> Trans -> Expr mat a -> Expr v a -> ST s (Mutable v s a)
+-- In-place matrix-vector multiplication
+inplaceEvalMV
+  :: (BLAS2 a, MVectorBLAS (Mutable v), MultMV (Mutable m) a)
+  => a -> Expr m a -> Expr v a -> a -> Mutable v s a -> ST s (Mutable v s a)
+{-# INLINE inplaceEvalMV #-}
+inplaceEvalMV a m v b u_ = do
+  m_ <- pull m
+  v_ <- pull v
+  multMV a m_ v_ b u_
+  return u_
+
+
+-- Transformed matrix-vector
+evalTMV
+  :: ( MultTMV (Mutable mat) a, MVectorBLAS (Mutable v), BLAS2 a, G.Vector v a )
+  => a -> Trans -> Expr mat a -> Expr v a -> ST s (Mutable v s a)
+{-# INLINE evalTMV #-}
 evalTMV a t m v = do
   m_ <- pull m
   v_ <- pull v
   r_ <- MG.new (rowsT t m_)
   multTMV a t m_ v_ 0 r_
   return r_
+
+-- In-place transformed matrix-vector
+inplaceEvalTMV
+  :: (BLAS2 a, MVectorBLAS (Mutable v), MultTMV (Mutable m) a)
+  => a -> Trans -> Expr m a -> Expr v a -> a -> Mutable v s a -> ST s (Mutable v s a)
+{-# INLINE inplaceEvalTMV #-}
+inplaceEvalTMV α t m v β u_ = do
+  m_ <- pull m
+  v_ <- pull v
+  multTMV α t m_ v_ β u_
+  return u_
+
+
+evalMM :: (BLAS3 a)
+       => a
+       -> Trans -> Expr MatD.Matrix a
+       -> Trans -> Expr MatD.Matrix a
+       -> ST s (Mutable MatD.Matrix s a)
+{-# INLINE evalMM #-}
+evalMM a tm m tn n = do
+  m_ <- evalST m
+  n_ <- evalST n
+  r  <- MMatD.new (rowsT tm m_, colsT tn n_)
+  multMM a tm m_ tn n_ 0 r
+  return r
+
 
 
 ----------------------------------------------------------------
