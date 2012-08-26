@@ -63,7 +63,7 @@ class Add a where
   (.+.) :: a -> a -> a
 
 instance (AddM (Mutable m) a, Freeze m a) => Add (m a) where
-   x .+. y = eval $ Add (Lit x) (Lit y)
+   x .+. y = eval $ Add () (Lit x) (Lit y)
 
 -- | Scalar multiplication
 class Scale v a where
@@ -145,10 +145,10 @@ absIndex v
 ----------------------------------------------------------------
 
 instance (BLAS1 a) => Scale S.Vector a where
-  s *. v = eval $ Scale s (Lit v)
+  s *. v = eval $ Scale () s (Lit v)
   {-# INLINE (*.) #-}
 instance (BLAS1 a) => Scale V.Vector a where
-  s *. v = eval $ Scale s (Lit v)
+  s *. v = eval $ Scale () s (Lit v)
   {-# INLINE (*.) #-}
 
 
@@ -163,26 +163,26 @@ instance (BLAS2 a) => Mul S.Vector (Transposed S.Vector) a where
   type MulRes S.Vector
              (Transposed S.Vector)
             = D.Matrix
-  v .*. Transposed u = eval $ VecT (Lit v) (Lit u)
+  v .*. Transposed u = eval $ VecT () (Lit v) (Lit u)
   {-# INLINE (.*.) #-}
 instance (BLAS2 a) => Mul S.Vector (Conjugated S.Vector) a where
   type MulRes S.Vector
              (Conjugated S.Vector)
             = D.Matrix
-  v .*. Conjugated u = eval $ VecH (Lit v) (Lit u)
+  v .*. Conjugated u = eval $ VecH () (Lit v) (Lit u)
   {-# INLINE (.*.) #-}
 
 instance (BLAS2 a) => Mul V.Vector (Transposed V.Vector) a where
   type MulRes V.Vector
              (Transposed V.Vector)
             = D.Matrix
-  v .*. Transposed u = eval $ VecT (Lit v) (Lit u)
+  v .*. Transposed u = eval $ VecT () (Lit v) (Lit u)
   {-# INLINE (.*.) #-}
 instance (BLAS2 a) => Mul V.Vector (Conjugated V.Vector) a where
   type MulRes V.Vector
              (Conjugated V.Vector)
             = D.Matrix
-  v .*. Conjugated u = eval $ VecH (Lit v) (Lit u)
+  v .*. Conjugated u = eval $ VecH () (Lit v) (Lit u)
   {-# INLINE (.*.) #-}
 
 
@@ -198,19 +198,19 @@ instance (BLAS2 a, Show a) => Mul D.Matrix V.Vector a where
   type MulRes D.Matrix
               V.Vector
             = V.Vector
-  m .*. v = eval $ MulMV (Lit m) (Lit v)
+  m .*. v = eval $ MulMV () (Lit m) (Lit v)
   {-# INLINE (.*.) #-}
 instance (BLAS2 a) => Mul (Transposed D.Matrix) V.Vector a where
   type MulRes (Transposed D.Matrix)
                V.Vector
              = V.Vector
-  Transposed m .*. v = eval $ MulTMV Trans (Lit m) (Lit v)
+  Transposed m .*. v = eval $ MulTMV () Trans (Lit m) (Lit v)
   {-# INLINE (.*.) #-}
 instance (BLAS2 a) => Mul (Conjugated D.Matrix) (V.Vector) a where
   type MulRes (Conjugated D.Matrix)
                V.Vector
              = V.Vector
-  Conjugated m .*. v = eval $ MulTMV ConjTrans (Lit m) (Lit v)
+  Conjugated m .*. v = eval $ MulTMV () ConjTrans (Lit m) (Lit v)
   {-# INLINE (.*.) #-}
 
 -- Storable
@@ -219,19 +219,19 @@ instance (BLAS2 a, Show a) => Mul D.Matrix S.Vector a where
   type MulRes D.Matrix
               S.Vector
             = S.Vector
-  m .*. v = eval $ MulMV (Lit m) (Lit v)
+  m .*. v = eval $ MulMV () (Lit m) (Lit v)
   {-# INLINE (.*.) #-}
 instance (BLAS2 a) => Mul (Transposed D.Matrix) S.Vector a where
   type MulRes (Transposed D.Matrix)
                S.Vector
              = S.Vector
-  Transposed m .*. v = eval $ MulTMV Trans (Lit m) (Lit v)
+  Transposed m .*. v = eval $ MulTMV () Trans (Lit m) (Lit v)
   {-# INLINE (.*.) #-}
 instance (BLAS2 a) => Mul (Conjugated D.Matrix) (S.Vector) a where
   type MulRes (Conjugated D.Matrix)
                S.Vector
              = S.Vector
-  Conjugated m .*. v = eval $ MulTMV ConjTrans (Lit m) (Lit v)
+  Conjugated m .*. v = eval $ MulTMV () ConjTrans (Lit m) (Lit v)
   {-# INLINE (.*.) #-}
 
 
@@ -244,12 +244,12 @@ instance (BLAS3 a) => Mul D.Matrix D.Matrix a where
   type MulRes D.Matrix
               D.Matrix
             = D.Matrix
-  m .*. n = eval $ MulMM NoTrans (Lit m) NoTrans (Lit n)
+  m .*. n = eval $ MulMM () NoTrans (Lit m) NoTrans (Lit n)
   {-# INLINE (.*.) #-}
 
 instance (BLAS3 a) => Mul D.Matrix (Transposed D.Matrix) a where
   type MulRes D.Matrix
              (Transposed D.Matrix)
             = D.Matrix
-  m .*. Transposed n = eval $ MulMM NoTrans (Lit m) Trans (Lit n)
+  m .*. Transposed n = eval $ MulMM () NoTrans (Lit m) Trans (Lit n)
   {-# INLINE (.*.) #-}
