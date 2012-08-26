@@ -27,10 +27,9 @@ module Numeric.BLAS (
     -- * Matrix vector operations
   ) where
 
-import Control.Monad
 import Control.Monad.ST
 
-import Data.Complex
+-- import Data.Complex
 import Data.Vector.Generic (Mutable)
 
 import Numeric.BLAS.Bindings (BLAS1,BLAS2,BLAS3,RealType,

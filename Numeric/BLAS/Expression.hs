@@ -40,7 +40,7 @@ import qualified Data.Matrix.Dense           as MatD
 import qualified Data.Matrix.Dense.Mutable   as MMatD
 
 import Numeric.BLAS.Mutable
-import Numeric.BLAS.Bindings (Trans(..))
+
 
 
 ----------------------------------------------------------------
