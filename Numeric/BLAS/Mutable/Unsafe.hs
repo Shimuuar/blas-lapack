@@ -16,13 +16,18 @@
 --
 -- This module provides unsafe function that doesn't check that
 -- dimensions of vectors and matrices match. These function have
--- /unsafe/ prefix. Some function do not need any cheking so they
--- don't have prefix. Checked vertsions are provided by
+-- /unsafe/ prefix. Some function do not need any checking so they
+-- don't have prefix. Checked versions are provided by
 -- 'Numeric.BLAS.Mutable' module.
 module Numeric.BLAS.Mutable.Unsafe (
+    -- * BLAS data types
+    BLAS1
+  , BLAS2
+  , BLAS3
+  , Trans(..)
     -- * Level 1 BLAS (Vector-vector operations)
     -- ** Low level data copying
-    unsafeCopy
+  , unsafeCopy
   , unsafeSwap
     -- ** \"Pure\" functions
   , unsafeDotProduct
@@ -42,9 +47,6 @@ module Numeric.BLAS.Mutable.Unsafe (
   , unsafeMultMM
     -- * Type classes and helpers
   , MVectorBLAS(..)
-  , BLAS1
-  , BLAS2
-  , BLAS3
   , colsT
   , rowsT
   ) where
@@ -144,9 +146,8 @@ unsafeAddVecScaled a v u
   = unsafePrimToPrim
   $ withForeignPtr fp $ \p ->
     withForeignPtr fq $ \q ->
-      BLAS.axpy n a p s1 q s2
+      BLAS.axpy (blasLength v) a p s1 q s2
   where
-    n  = blasLength v ; m  = blasLength u
     s1 = blasStride v ; s2 = blasStride u
     fp = blasFPtr   v ; fq = blasFPtr   u
 
@@ -156,7 +157,7 @@ unsafeAddVecScaled a v u
 -- Level 2 BLAS
 ----------------------------------------------------------------
 
--- | Bindings for matrix vector multiplication routines provided by
+-- | Bindings for matrix-vector multiplication routines provided by
 --   BLAS.
 --
 --   > y ← α·A·x + β·y
@@ -170,8 +171,8 @@ class M.IsMMatrix mat a => MultMV mat a where
                -> m ()
 
 
--- | Bindings for matrix vector multiplication routines provided by
---   BLAS. Matrix could be transposed of conhugated.
+-- | Bindings for matrix-vector multiplication routines provided by
+--   BLAS. Optionally matrix could be transposed of conjugated.
 --
 --   > y ← α·op(A)·x + β·y
 class MultMV mat a => MultTMV mat a where
@@ -202,7 +203,7 @@ instance S.Storable a => MultTMV MD.MMatrix a where
   {-# INLINE unsafeMultTMV #-}
 
 
--- | Compute
+-- | Compute vector-vector product:
 --
 -- > A ← α·x·y' + A
 unsafeCrossVV
@@ -221,7 +222,7 @@ unsafeCrossVV a v u (MD.MMatrix _ _ lda fp) = do
         m lda
 
 
--- | Compute
+-- | Compute vector-vector product:
 --
 -- > A ← α·x·conjg(y') + A
 unsafeCrossHVV
@@ -245,7 +246,7 @@ unsafeCrossHVV a v u (MD.MMatrix _ _ lda fp) = do
 -- Level 3 BLAS
 ----------------------------------------------------------------
 
--- | Unsafe multiplication of matrices:
+-- | Unsafe multiplication of dense matrices:
 --
 -- > C ← α·op(A)·op(B) + β·C
 unsafeMultMM :: (PrimMonad m, BLAS3 a)

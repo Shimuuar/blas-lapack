@@ -14,9 +14,14 @@
 -- only hides pointers from plain view and provide little less cryptic
 -- names.
 module Numeric.BLAS.Mutable (
+    -- * BLAS data types
+    BLAS1
+  , BLAS2
+  , BLAS3
+  , Trans(..)
     -- * Level 1 BLAS (Vector-vector operations)
     -- ** Low level data copying
-    copy
+  , copy
   , swap
   , unsafeCopy
   , unsafeSwap
@@ -42,28 +47,15 @@ module Numeric.BLAS.Mutable (
   , multMM
     -- * Type classes and helpers
   , MVectorBLAS(..)
-  , BLAS1
-  , BLAS2
-  , BLAS3
-    -- ** Helpers
   , colsT
   , rowsT
   ) where
 
 import Control.Monad.Primitive
 
-import Foreign.Ptr
-import Foreign.ForeignPtr
-
-import qualified Data.Vector.Storable                 as S
-import qualified Data.Vector.Storable.Strided.Mutable as V
 import qualified Data.Matrix.Generic.Mutable          as M
 import qualified Data.Matrix.Dense.Mutable            as MD
 
-import qualified Numeric.BLAS.Bindings as BLAS
-import           Numeric.BLAS.Bindings   (BLAS1,BLAS2,BLAS3,RealType,
-                                          RowOrder(..), Trans(..)
-                                         )
 import Numeric.BLAS.Mutable.Unsafe
 
 
@@ -165,7 +157,7 @@ multTMV a t m x b y
 
 ----------------------------------------
 
--- | Compute
+-- | Compute vector-vector product:
 --
 -- > A ← α·x·y' + A
 crossVV
@@ -178,7 +170,7 @@ crossVV a v u m
   | otherwise                = unsafeCrossVV a v u m
 
 
--- | Compute
+-- | Compute vector-vector product:
 --
 -- > A ← α·x·conjg(y') + A
 crossHVV
@@ -197,7 +189,7 @@ crossHVV a v u m
 -- Level 3 BLAS
 ----------------------------------------------------------------
 
--- | Unsafe multiplication of matrices:
+-- | Unsafe multiplication of dense matrices:
 --
 -- > C ← α·op(A)·op(B) + β·C
 multMM :: (PrimMonad m, BLAS3 a)
