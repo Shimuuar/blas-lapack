@@ -177,6 +177,7 @@ data Expr m a where
 -- | Evaluate expression. Returned expression could be mutated in
 --   place or unsafe-freezed.
 evalST :: Expr m a -> ST s (Mutable m s a)
+{-# INLINE evalST #-}
 -- Reduce double scale
 evalST (Scale a (Scale b e)) = evalST $ Scale (a*b) e
 --
@@ -226,6 +227,7 @@ evalST (Add x y) = do
 
 --
 mutable :: Expr m a -> Maybe (ST s (Mutable m s a))
+{-# INLINE mutable #-}
 mutable (Lit _) = Nothing
 mutable x       = Just $ evalST x
 
@@ -237,8 +239,9 @@ pull (Lit e) = unsafeThaw e
 pull x       = evalST x
 
 eval :: Freeze m a => Expr m a -> m a
+{-# INLINE eval #-}
 eval x = runST $ do
-  trace (dumpExpressionTree x) $ return ()
+  -- trace (dumpExpressionTree x) $ return ()
   unsafeFreeze =<< evalST x
 
 
