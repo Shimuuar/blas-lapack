@@ -196,12 +196,19 @@ evalST cont (Add _            u  (Scale _ α (MulTMV q t m v))) | Just u_ <- mut
 evalST cont (Add _ (Scale _ β u)            (MulTMV q t m v))  | Just u_ <- mutable (cont q) u = inplaceEvalTMV (cont q) 1 t m v β =<< u_
 evalST cont (Add _ (Scale _ β u) (Scale _ α (MulTMV q t m v))) | Just u_ <- mutable (cont q) u = inplaceEvalTMV (cont q) α t m v β =<< u_
 -- * No nice rules match. We have to use generic function
-evalST cont (Add q x y) = do
-  x_ <- cont q x
-  y_ <- cont q y
-  addM x_ y_
-  return y_
---
+evalST cont (Add q x y)
+  | Just mx <- mutable (cont q) x = do y_ <- pull (cont q) y
+                                       x_ <- mx
+                                       addM y_ x_
+                                       return x_
+  | Just my <- mutable (cont q) y = do x_ <- pull (cont q) x
+                                       y_ <- my
+                                       addM x_ y_
+                                       return y_
+  | otherwise                     = do x_ <- pull (cont q) x
+                                       y_ <- cont q y
+                                       addM x_ y_
+                                       return y_
 --   Multiplication
 --   ==============
 --
