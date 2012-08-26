@@ -169,68 +169,88 @@ type Cont s = forall v a. Expr v a -> ST s (Mutable v s a)
 -- or unsafe-freezed.
 evalST :: (() -> Cont s) -> Expr m a -> ST s (Mutable m s a)
 {-# INLINE evalST #-}
--- Reduce double scale
+-- Reduce double scale.
 evalST cont (Scale q α (Scale _ β e)) = cont q $ Scale () (α*β) e
 --
--- Vector-vector ⇒ matrix
-evalST cont (Scale _ a (VecT q v u)) = evalVVT (cont q) a v u
-evalST cont            (VecT q v u)  = evalVVT (cont q) 1 v u
-evalST cont (Scale _ a (VecH q v u)) = evalVVH (cont q) a v u
-evalST cont            (VecH q v u)  = evalVVH (cont q) 1 v u
+--   Addition
+--   ========
 --
--- ## Matrix-vector
+-- When performing addition we want to mutate temporary if it's
+-- possible. Especially so because BLAS primitives allow that. Since
+-- addition operator is left associative we expect that temporary will
+-- appear on the left
 --
--- We want to modify vector in place if it's possible. Since addition
--- operator is left associative we expect that temporary will appear
--- on the left
+-- * Matrix x Vector
 evalST cont (Add _            u             (MulMV q m v))  | Just u_ <- mutable (cont q) u = inplaceEvalMV (cont q) 1 m v 1 =<< u_
 evalST cont (Add _            u  (Scale _ α (MulMV q m v))) | Just u_ <- mutable (cont q) u = inplaceEvalMV (cont q) α m v 1 =<< u_
 evalST cont (Add _ (Scale _ β u)            (MulMV q m v))  | Just u_ <- mutable (cont q) u = inplaceEvalMV (cont q) 1 m v β =<< u_
 evalST cont (Add _ (Scale _ β u) (Scale _ α (MulMV q m v))) | Just u_ <- mutable (cont q) u = inplaceEvalMV (cont q) α m v β =<< u_
--- -- Here we must allocate vector
-evalST cont (Scale _ a (MulMV q m v)) = evalMV (cont q) a m v
-evalST cont            (MulMV q m v)  = evalMV (cont q) 1 m v
--- -- Same for operations with transformation
+-- * op(Matrix) x Vector
 evalST cont (Add _            u             (MulTMV q t m v))  | Just u_ <- mutable (cont q) u = inplaceEvalTMV (cont q) 1 t m v 1 =<< u_
 evalST cont (Add _            u  (Scale _ α (MulTMV q t m v))) | Just u_ <- mutable (cont q) u = inplaceEvalTMV (cont q) α t m v 1 =<< u_
 evalST cont (Add _ (Scale _ β u)            (MulTMV q t m v))  | Just u_ <- mutable (cont q) u = inplaceEvalTMV (cont q) 1 t m v β =<< u_
 evalST cont (Add _ (Scale _ β u) (Scale _ α (MulTMV q t m v))) | Just u_ <- mutable (cont q) u = inplaceEvalTMV (cont q) α t m v β =<< u_
---
-evalST cont (Scale _ a (MulTMV q t m v)) = evalTMV (cont q) a t m v
-evalST cont            (MulTMV q t m v)  = evalTMV (cont q) 1 t m v
---
--- Matrix-matrix
-evalST cont (Scale _ a (MulMM q tm m tn n)) = evalMM (cont q) a tm m tn n
-evalST cont            (MulMM q tm m tn n)  = evalMM (cont q) 1 tm m tn n
---
--- Fallbacks
-evalST _ (Lit     e) = clone =<< unsafeThaw e
-evalST cont (Scale q a x) = do
-  m <- cont q x
-  scale a m
-  return m
+-- * Vector x trans(Vector)
+evalST cont (Add _  m            (VecT q v u))  | Just m_ <- mutable (cont q) m = inplaceEvalVVT (cont q) 1 v u =<< m_
+evalST cont (Add _  m (Scale _ α (VecT q v u))) | Just m_ <- mutable (cont q) m = inplaceEvalVVT (cont q) α v u =<< m_
+evalST cont (Add _  m            (VecH q v u))  | Just m_ <- mutable (cont q) m = inplaceEvalVVH (cont q) 1 v u =<< m_
+evalST cont (Add _  m (Scale _ α (VecH q v u))) | Just m_ <- mutable (cont q) m = inplaceEvalVVH (cont q) α v u =<< m_
+-- * No nice rules match. We have to use generic function
 evalST cont (Add q x y) = do
   x_ <- cont q x
   y_ <- cont q y
   addM x_ y_
   return y_
+--
+--   Multiplication
+--   ==============
+--
+-- Here we cannot reuse existing temporary and have to allocate new one.
+--
+-- * Vector-trans(Vector)
+evalST cont (Scale _ a (VecT q v u)) = evalVVT (cont q) a v u
+evalST cont            (VecT q v u)  = evalVVT (cont q) 1 v u
+evalST cont (Scale _ a (VecH q v u)) = evalVVH (cont q) a v u
+evalST cont            (VecH q v u)  = evalVVH (cont q) 1 v u
+-- * Matrix x Vector
+evalST cont (Scale _ a (MulMV q m v)) = evalMV (cont q) a m v
+evalST cont            (MulMV q m v)  = evalMV (cont q) 1 m v
+-- * op(Matrix) x Vector
+evalST cont (Scale _ a (MulTMV q t m v)) = evalTMV (cont q) a t m v
+evalST cont            (MulTMV q t m v)  = evalTMV (cont q) 1 t m v
+-- * op(Matrix) x op(Matrix)
+evalST cont (Scale _ a (MulMM q tm m tn n)) = evalMM (cont q) a tm m tn n
+evalST cont            (MulMM q tm m tn n)  = evalMM (cont q) 1 tm m tn n
+--
+-- * Scale data type in place
+evalST cont (Scale q a x) = do
+  m <- cont q x
+  scale a m
+  return m
+-- * Copy literal so it could be mutated in subsequent operations. It
+--   doesn't incur any unnecessary cost because in places where data
+--   wouldn't be modified `pull' is used.
+evalST _ (Lit     e) = clone =<< unsafeThaw e
 
 
--- Try to get temporary which could be mutated in place.
+
+
+-- | Try to get temporary which could be mutated in place.
 mutable :: Cont s -> Expr m a -> Maybe (ST s (Mutable m s a))
 {-# INLINE mutable #-}
 mutable _    (Lit _) = Nothing
 mutable cont x       = Just $ cont x
 
 
--- Get mutable data structure for use in BLAS. It must not be
--- modified.
+-- | Get mutable data structure for use in BLAS calls. It must not be
+--   modified.
 pull :: Cont s -> Expr m a -> ST s (Mutable m s a)
 {-# INLINE pull #-}
 pull _    (Lit e) = unsafeThaw e
 pull cont x       = cont x
 
 
+-- | Worker function
 evalST' :: () -> Expr m a -> ST s (Mutable m s a)
 evalST' _ = evalST evalST'
 
@@ -249,10 +269,13 @@ eval x = runST $ do
   unsafeFreeze =<< evalST' () x
 
 
--- * Eliminate constructors and evals
+-- Rewrite rules:
+--
+-- Eliminate constructors and evals
 {-# RULES "BLAS:Lit/eval" forall e. Lit (eval e) = e #-}
--- * Forcefully inline evalST'
+-- Forcefully inline evalST'
 {-# RULES "BLAS:evalST" evalST' () = evalST evalST' #-}
+
 
 
 ----------------------------------------------------------------
@@ -271,6 +294,17 @@ evalVVT cont a v u = do
   crossVV a v_ u_ m_
   return m_
 
+-- In-place  Vector-vector^T multiplication
+inplaceEvalVVT
+  :: ( BLAS2 a, MVectorBLAS (Mutable v) )
+  => Cont s -> a -> Expr v a -> Expr v a -> MMatD.MMatrix s a -> ST s (MMatD.MMatrix s a)
+inplaceEvalVVT cont a v u m_ = do
+  v_ <- pull cont v
+  u_ <- pull cont u
+  crossVV a v_ u_ m_
+  return m_
+
+
 -- Vector-vector^+ multiplication
 evalVVH
   :: ( BLAS2 a, MVectorBLAS (Mutable v) )
@@ -282,6 +316,17 @@ evalVVH cont a v u = do
   m_ <- MMatD.new (blasLength v_, blasLength u_)
   crossHVV a v_ u_ m_
   return m_
+
+-- In-place  Vector-vector^T multiplication
+inplaceEvalVVH
+  :: ( BLAS2 a, MVectorBLAS (Mutable v) )
+  => Cont s -> a -> Expr v a -> Expr v a -> MMatD.MMatrix s a -> ST s (MMatD.MMatrix s a)
+inplaceEvalVVH cont a v u m_ = do
+  v_ <- pull cont v
+  u_ <- pull cont u
+  crossHVV a v_ u_ m_
+  return m_
+
 
 -- Matrix-vector multiplication
 evalMV
