@@ -64,7 +64,8 @@ import           Numeric.BLAS.Bindings   (BLAS1,BLAS2,BLAS3,RealType,
 import qualified Data.Vector.Storable                 as S
 import qualified Data.Vector.Storable.Strided.Mutable as V
 import qualified Data.Matrix.Generic.Mutable          as M
-import qualified Data.Matrix.Dense.Mutable            as MD
+-- Concrete matrices
+import           Data.Matrix.Dense.Mutable (MMatrix(..))
 
 
 ----------------------------------------------------------------
@@ -186,12 +187,12 @@ class MultMV mat a => MultTMV mat a where
                  -> m ()
 
 
-instance S.Storable a => MultMV MD.MMatrix a where
+instance S.Storable a => MultMV MMatrix a where
   unsafeMultMV a = unsafeMultTMV a NoTrans
   {-# INLINE unsafeMultMV #-}
 
-instance S.Storable a => MultTMV MD.MMatrix a where
-  unsafeMultTMV a t (MD.MMatrix rows cols lda fp) x b y
+instance S.Storable a => MultTMV MMatrix a where
+  unsafeMultTMV a t (MMatrix rows cols lda fp) x b y
     = unsafePrimToPrim
     $ withForeignPtr  fp          $ \pa ->
       withForeignPtr (blasFPtr x) $ \px ->
@@ -208,9 +209,9 @@ instance S.Storable a => MultTMV MD.MMatrix a where
 -- > A ← α·x·y' + A
 unsafeCrossVV
   :: (PrimMonad m, MVectorBLAS v, BLAS2 a)
-  => a -> v (PrimState m) a -> v (PrimState m) a -> MD.MMatrix (PrimState m) a -> m ()
+  => a -> v (PrimState m) a -> v (PrimState m) a -> MMatrix (PrimState m) a -> m ()
 {-# INLINE unsafeCrossVV #-}
-unsafeCrossVV a v u (MD.MMatrix _ _ lda fp) = do
+unsafeCrossVV a v u (MMatrix _ _ lda fp) = do
   unsafePrimToPrim $
     withForeignPtr (blasFPtr v) $ \p ->
     withForeignPtr (blasFPtr u) $ \q ->
@@ -227,9 +228,9 @@ unsafeCrossVV a v u (MD.MMatrix _ _ lda fp) = do
 -- > A ← α·x·conjg(y') + A
 unsafeCrossHVV
   :: (PrimMonad m, MVectorBLAS v, BLAS2 a)
-  => a -> v (PrimState m) a -> v (PrimState m) a -> MD.MMatrix (PrimState m) a -> m ()
+  => a -> v (PrimState m) a -> v (PrimState m) a -> MMatrix (PrimState m) a -> m ()
 {-# INLINE unsafeCrossHVV #-}
-unsafeCrossHVV a v u (MD.MMatrix _ _ lda fp) = do
+unsafeCrossHVV a v u (MMatrix _ _ lda fp) = do
   unsafePrimToPrim $
     withForeignPtr (blasFPtr v) $ \p ->
     withForeignPtr (blasFPtr u) $ \q ->
@@ -252,14 +253,14 @@ unsafeCrossHVV a v u (MD.MMatrix _ _ lda fp) = do
 unsafeMultMM :: (PrimMonad m, BLAS3 a)
              => a
              -> Trans
-             -> MD.MMatrix (PrimState m) a
+             -> MMatrix (PrimState m) a
              -> Trans
-             -> MD.MMatrix (PrimState m) a
+             -> MMatrix (PrimState m) a
              -> a
-             -> MD.MMatrix (PrimState m) a
+             -> MMatrix (PrimState m) a
              -> m ()
 {-# INLINE unsafeMultMM #-}
-unsafeMultMM a ta ma@(MD.MMatrix _ _ lda fpa) tb (MD.MMatrix _ _ ldb fpb) b (MD.MMatrix rows cols ldc fpc)
+unsafeMultMM a ta ma@(MMatrix _ _ lda fpa) tb (MMatrix _ _ ldb fpb) b (MMatrix rows cols ldc fpc)
   = unsafePrimToPrim
   $ withForeignPtr fpa $ \pa ->
     withForeignPtr fpb $ \pb ->
