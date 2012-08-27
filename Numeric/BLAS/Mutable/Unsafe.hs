@@ -58,14 +58,16 @@ import Foreign.ForeignPtr
 
 import qualified Numeric.BLAS.Bindings as BLAS
 import           Numeric.BLAS.Bindings   (BLAS1,BLAS2,BLAS3,RealType,
-                                          RowOrder(..), Trans(..)
+                                          RowOrder(..), Trans(..), Uplo(..)
                                          )
 
 import qualified Data.Vector.Storable                 as S
 import qualified Data.Vector.Storable.Strided.Mutable as V
 import qualified Data.Matrix.Generic.Mutable          as M
 -- Concrete matrices
-import           Data.Matrix.Dense.Mutable (MMatrix(..))
+import           Data.Matrix.Dense.Mutable     (MMatrix(..))
+import           Data.Matrix.Symmetric.Mutable (MSymmetric(..))
+
 
 
 ----------------------------------------------------------------
@@ -187,6 +189,7 @@ class MultMV mat a => MultTMV mat a where
                  -> m ()
 
 
+
 instance S.Storable a => MultMV MMatrix a where
   unsafeMultMV a = unsafeMultTMV a NoTrans
   {-# INLINE unsafeMultMV #-}
@@ -202,6 +205,19 @@ instance S.Storable a => MultTMV MMatrix a where
                     px (blasStride y)
                   b py (blasStride y)
   {-# INLINE unsafeMultTMV #-}
+
+instance S.Storable a => MultMV MSymmetric a where
+  unsafeMultMV α (MSymmetric n lda fp) x β y
+    = unsafePrimToPrim
+    $ withForeignPtr fp           $ \pa ->
+      withForeignPtr (blasFPtr x) $ \px ->
+      withForeignPtr (blasFPtr y) $ \py ->
+        BLAS.hemv ColMajor Upper
+                  n α pa lda
+                    px (blasStride x)
+                  β py (blasStride y)
+  {-# INLINE unsafeMultMV #-}
+
 
 
 -- | Compute vector-vector product:
