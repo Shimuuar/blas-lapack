@@ -38,6 +38,8 @@ import qualified Data.Matrix.Generic         as Mat
 import qualified Data.Matrix.Generic.Mutable as MMat
 import qualified Data.Matrix.Dense           as MatD
 import qualified Data.Matrix.Dense.Mutable   as MMatD
+import qualified Data.Matrix.Symmetric           as MatS
+import qualified Data.Matrix.Symmetric.Mutable   as MMatS
 
 import Numeric.BLAS.Mutable
 
@@ -455,6 +457,13 @@ instance Storable a => Clonable MMatD.MMatrix a where
   cloneShape = MMat.cloneShape
   clone      = MMat.clone
 instance Storable a => Freeze MatD.Matrix a where
+  unsafeFreeze = Mat.unsafeFreeze
+  unsafeThaw   = Mat.unsafeThaw
+
+instance Storable a => Clonable MMatS.MSymmetric a where
+  cloneShape = MMat.cloneShape
+  clone      = MMat.clone
+instance Storable a => Freeze MatS.Symmetric a where
   unsafeFreeze = Mat.unsafeFreeze
   unsafeThaw   = Mat.unsafeThaw
 

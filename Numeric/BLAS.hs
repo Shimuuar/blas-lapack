@@ -46,7 +46,8 @@ import qualified Data.Matrix.Generic         as Mat
 import qualified Data.Vector.Storable         as S
 import qualified Data.Vector.Storable.Strided as V
 -- Concrete matrices
-import           Data.Matrix.Dense  (Matrix)
+import           Data.Matrix.Dense     (Matrix)
+import           Data.Matrix.Symmetric (Symmetric)
 
 import qualified Numeric.BLAS.Mutable as M
 
@@ -250,6 +251,14 @@ instance (BLAS2 a, a ~ a') => Mul (Conjugated Matrix a) (S.Vector a') where
               (S.Vector a')
              = S.Vector a
   Conjugated m .*. v = eval $ MulTMV () ConjTrans (Lit m) (Lit v)
+  {-# INLINE (.*.) #-}
+
+
+instance (BLAS2 a, a ~ a') => Mul (Symmetric a) (S.Vector a') where
+  type MulRes (Symmetric a)
+              (S.Vector a')
+             = S.Vector a
+  m .*. v = eval $ MulMV () (Lit m) (Lit v)
   {-# INLINE (.*.) #-}
 
 
