@@ -36,6 +36,8 @@ Library
     Data.Matrix.Generic.Mutable
     Data.Matrix.Dense
     Data.Matrix.Dense.Mutable
+    Data.Matrix.Symmetric
+    Data.Matrix.Symmetric.Mutable
     -- High level BLAS interface
     Numeric.BLAS
     Numeric.BLAS.Mutable
