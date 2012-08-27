@@ -125,6 +125,8 @@ addVecScaled a v u
 ----------------------------------------------------------------
 
 -- | Matrix vector multiplication which does range checking
+--
+--   > y ← α·A·x + β·y
 multMV ::(PrimMonad m, MultMV mat a, MVectorBLAS v, BLAS2 a)
        => a                   -- ^ /α/
        -> mat (PrimState m) a -- ^ /A/
@@ -139,6 +141,8 @@ multMV a m x b y
   | otherwise                = unsafeMultMV a m x b y
 
 -- | Matrix vector multiplication which dows range checking
+--
+--   > y ← α·A·x + β·y
 multTMV ::(PrimMonad m, MultTMV mat a, MVectorBLAS v, BLAS2 a)
         => a                   -- ^ /α/
         -> Trans
