@@ -61,9 +61,13 @@ import Numeric.BLAS.Mutable (MVectorBLAS)
 -- | Addition for vectors and matrices.
 class Add a where
   (.+.) :: a -> a -> a
+  (.-.) :: a -> a -> a
 
 instance (AddM (Mutable m) a, Freeze m a) => Add (m a) where
    x .+. y = eval $ Add () (Lit x) (Lit y)
+   {-# INLINE (.+.) #-}
+   x .-. y = eval $ Sub () (Lit x) (Lit y)
+   {-# INLINE (.-.) #-}
 
 -- | Scalar multiplication
 class Scale v a where
