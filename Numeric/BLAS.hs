@@ -45,7 +45,8 @@ import qualified Data.Matrix.Generic         as Mat
 -- Concrete vectors
 import qualified Data.Vector.Storable         as S
 import qualified Data.Vector.Storable.Strided as V
-import qualified Data.Matrix.Dense            as D
+-- Concrete matrices
+import           Data.Matrix.Dense  (Matrix)
 
 import qualified Numeric.BLAS.Mutable as M
 
@@ -69,9 +70,9 @@ class Scale v a where
   (*.) :: a -> v a -> v a
 
 -- | Very overloaded operator for matrix and vector multiplication.
-class Mul v u a where
-  type MulRes v u :: * -> *
-  (.*.) :: v a -> u a -> MulRes v u a
+class Mul v u where
+  type MulRes v u :: *
+  (.*.) :: v -> u -> MulRes v u
 
 -- | Transpose vector or matrix.
 trans :: mat a -> Transposed mat a
@@ -156,31 +157,45 @@ instance (BLAS1 a) => Scale V.Vector a where
 -- Vector x Vector
 ----------------------------------------------------------------
 
+instance (BLAS1 a, a ~ a') => Mul (Transposed S.Vector a) (S.Vector a') where
+  type MulRes (Transposed S.Vector a )
+              (           S.Vector a')
+             = a
+  Transposed v .*. u = dotProduct v u
+  {-# INLINE (.*.) #-}
+instance (BLAS1 a, a ~ a') => Mul (Transposed V.Vector a) (V.Vector a') where
+  type MulRes (Transposed V.Vector a )
+              (           V.Vector a')
+             = a
+  Transposed v .*. u = dotProduct v u
+  {-# INLINE (.*.) #-}
+
+
 -- == Vector x Vector => Matrix ====
 
-instance (BLAS2 a) => Mul S.Vector (Transposed S.Vector) a where
-  type MulRes S.Vector
-             (Transposed S.Vector)
-            = D.Matrix
+instance (BLAS2 a, a ~ a') => Mul (S.Vector a) (Transposed S.Vector a') where
+  type MulRes (           S.Vector a )
+              (Transposed S.Vector a')
+             = Matrix a
   v .*. Transposed u = eval $ VecT () (Lit v) (Lit u)
   {-# INLINE (.*.) #-}
-instance (BLAS2 a) => Mul S.Vector (Conjugated S.Vector) a where
-  type MulRes S.Vector
-             (Conjugated S.Vector)
-            = D.Matrix
+instance (BLAS2 a, a ~ a') => Mul (S.Vector a) (Conjugated S.Vector a') where
+  type MulRes (           S.Vector a )
+              (Conjugated S.Vector a')
+             = Matrix a
   v .*. Conjugated u = eval $ VecH () (Lit v) (Lit u)
   {-# INLINE (.*.) #-}
 
-instance (BLAS2 a) => Mul V.Vector (Transposed V.Vector) a where
-  type MulRes V.Vector
-             (Transposed V.Vector)
-            = D.Matrix
+instance (BLAS2 a, a ~ a') => Mul (V.Vector a) (Transposed V.Vector a') where
+  type MulRes (           V.Vector a )
+              (Transposed V.Vector a')
+             = Matrix a
   v .*. Transposed u = eval $ VecT () (Lit v) (Lit u)
   {-# INLINE (.*.) #-}
-instance (BLAS2 a) => Mul V.Vector (Conjugated V.Vector) a where
-  type MulRes V.Vector
-             (Conjugated V.Vector)
-            = D.Matrix
+instance (BLAS2 a, a ~ a') => Mul (V.Vector a) (Conjugated V.Vector a') where
+  type MulRes (           V.Vector a )
+              (Conjugated V.Vector a')
+             = Matrix a
   v .*. Conjugated u = eval $ VecH () (Lit v) (Lit u)
   {-# INLINE (.*.) #-}
 
@@ -193,62 +208,115 @@ instance (BLAS2 a) => Mul V.Vector (Conjugated V.Vector) a where
 
 -- Strided
 
-instance (BLAS2 a, Show a) => Mul D.Matrix V.Vector a where
-  type MulRes D.Matrix
-              V.Vector
-            = V.Vector
+instance (BLAS2 a, a ~ a') => Mul (Matrix a) (V.Vector a') where
+  type MulRes (Matrix   a )
+              (V.Vector a')
+             = V.Vector a
   m .*. v = eval $ MulMV () (Lit m) (Lit v)
   {-# INLINE (.*.) #-}
-instance (BLAS2 a) => Mul (Transposed D.Matrix) V.Vector a where
-  type MulRes (Transposed D.Matrix)
-               V.Vector
-             = V.Vector
+instance (BLAS2 a, a ~ a') => Mul (Transposed Matrix a) (V.Vector a') where
+  type MulRes (Transposed Matrix a)
+              (V.Vector a')
+             = V.Vector a
   Transposed m .*. v = eval $ MulTMV () Trans (Lit m) (Lit v)
   {-# INLINE (.*.) #-}
-instance (BLAS2 a) => Mul (Conjugated D.Matrix) (V.Vector) a where
-  type MulRes (Conjugated D.Matrix)
-               V.Vector
-             = V.Vector
+instance (BLAS2 a, a ~ a') => Mul (Conjugated Matrix a) (V.Vector a') where
+  type MulRes (Conjugated Matrix a)
+              (V.Vector a')
+             = V.Vector a
   Conjugated m .*. v = eval $ MulTMV () ConjTrans (Lit m) (Lit v)
   {-# INLINE (.*.) #-}
 
 -- Storable
 
-instance (BLAS2 a, Show a) => Mul D.Matrix S.Vector a where
-  type MulRes D.Matrix
-              S.Vector
-            = S.Vector
+instance (BLAS2 a, a ~ a') => Mul (Matrix a) (S.Vector a') where
+  type MulRes (Matrix   a )
+              (S.Vector a')
+             = S.Vector a
   m .*. v = eval $ MulMV () (Lit m) (Lit v)
   {-# INLINE (.*.) #-}
-instance (BLAS2 a) => Mul (Transposed D.Matrix) S.Vector a where
-  type MulRes (Transposed D.Matrix)
-               S.Vector
-             = S.Vector
+instance (BLAS2 a, a ~ a') => Mul (Transposed Matrix a) (S.Vector a') where
+  type MulRes (Transposed Matrix a)
+              (S.Vector a')
+             = S.Vector a
   Transposed m .*. v = eval $ MulTMV () Trans (Lit m) (Lit v)
   {-# INLINE (.*.) #-}
-instance (BLAS2 a) => Mul (Conjugated D.Matrix) (S.Vector) a where
-  type MulRes (Conjugated D.Matrix)
-               S.Vector
-             = S.Vector
+instance (BLAS2 a, a ~ a') => Mul (Conjugated Matrix a) (S.Vector a') where
+  type MulRes (Conjugated Matrix a)
+              (S.Vector a')
+             = S.Vector a
   Conjugated m .*. v = eval $ MulTMV () ConjTrans (Lit m) (Lit v)
   {-# INLINE (.*.) #-}
 
 
 
 ----------------------------------------------------------------
--- Matrix x Matrix
+-- Matrix x Matrix for dense matrices
 ----------------------------------------------------------------
 
-instance (BLAS3 a) => Mul D.Matrix D.Matrix a where
-  type MulRes D.Matrix
-              D.Matrix
-            = D.Matrix
+instance (BLAS3 a, a ~ a') => Mul (Matrix a) (Matrix a') where
+  type MulRes (Matrix a )
+              (Matrix a')
+             = Matrix a
   m .*. n = eval $ MulMM () NoTrans (Lit m) NoTrans (Lit n)
   {-# INLINE (.*.) #-}
 
-instance (BLAS3 a) => Mul D.Matrix (Transposed D.Matrix) a where
-  type MulRes D.Matrix
-             (Transposed D.Matrix)
-            = D.Matrix
+instance (BLAS3 a, a ~ a') => Mul (Matrix a) (Transposed Matrix a') where
+  type MulRes (           Matrix a )
+              (Transposed Matrix a')
+             = Matrix a
   m .*. Transposed n = eval $ MulMM () NoTrans (Lit m) Trans (Lit n)
+  {-# INLINE (.*.) #-}
+
+instance (BLAS3 a, a ~ a') => Mul (Matrix a) (Conjugated Matrix a') where
+  type MulRes (           Matrix a )
+              (Conjugated Matrix a')
+             = Matrix a
+  m .*. Conjugated n = eval $ MulMM () NoTrans (Lit m) ConjTrans (Lit n)
+  {-# INLINE (.*.) #-}
+
+
+
+instance (BLAS3 a, a ~ a') => Mul (Transposed Matrix a) (Matrix a') where
+  type MulRes (Transposed Matrix a )
+              (           Matrix a')
+             = Matrix a
+  Transposed m .*. n = eval $ MulMM () Trans (Lit m) NoTrans (Lit n)
+  {-# INLINE (.*.) #-}
+
+instance (BLAS3 a, a ~ a') => Mul (Transposed Matrix a) (Transposed Matrix a') where
+  type MulRes (Transposed Matrix a )
+              (Transposed Matrix a')
+             = Matrix a
+  Transposed m .*. Transposed n = eval $ MulMM () Trans (Lit m) Trans (Lit n)
+  {-# INLINE (.*.) #-}
+
+instance (BLAS3 a, a ~ a') => Mul (Transposed Matrix a) (Conjugated Matrix a') where
+  type MulRes (Transposed Matrix a )
+              (Conjugated Matrix a')
+             = Matrix a
+  Transposed m .*. Conjugated n = eval $ MulMM () Trans (Lit m) ConjTrans (Lit n)
+  {-# INLINE (.*.) #-}
+
+
+
+instance (BLAS3 a, a ~ a') => Mul (Conjugated Matrix a) (Matrix a') where
+  type MulRes (Conjugated Matrix a )
+              (           Matrix a')
+             = Matrix a
+  Conjugated m .*. n = eval $ MulMM () ConjTrans (Lit m) NoTrans (Lit n)
+  {-# INLINE (.*.) #-}
+
+instance (BLAS3 a, a ~ a') => Mul (Conjugated Matrix a) (Transposed Matrix a') where
+  type MulRes (Conjugated Matrix a )
+              (Transposed Matrix a')
+             = Matrix a
+  Conjugated m .*. Transposed n = eval $ MulMM () ConjTrans (Lit m) Trans (Lit n)
+  {-# INLINE (.*.) #-}
+
+instance (BLAS3 a, a ~ a') => Mul (Conjugated Matrix a) (Conjugated Matrix a') where
+  type MulRes (Conjugated Matrix a )
+              (Conjugated Matrix a')
+             = Matrix a
+  Conjugated m .*. Conjugated n = eval $ MulMM () ConjTrans (Lit m) ConjTrans (Lit n)
   {-# INLINE (.*.) #-}
