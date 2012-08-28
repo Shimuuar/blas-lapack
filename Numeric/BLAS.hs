@@ -254,12 +254,12 @@ instance (BLAS2 a, a ~ a') => Mul (Conjugated Matrix a) (S.Vector a') where
   {-# INLINE (.*.) #-}
 
 
-instance (BLAS2 a, a ~ a') => Mul (Symmetric a) (S.Vector a') where
-  type MulRes (Symmetric a)
-              (S.Vector a')
-             = S.Vector a
-  m .*. v = eval $ MulMV () (Lit m) (Lit v)
-  {-# INLINE (.*.) #-}
+-- instance (BLAS2 a, a ~ a') => Mul (Symmetric a) (S.Vector a') where
+--   type MulRes (Symmetric a)
+--               (S.Vector a')
+--              = S.Vector a
+--   m .*. v = eval $ MulMV () (Lit m) (Lit v)
+--   {-# INLINE (.*.) #-}
 
 
 

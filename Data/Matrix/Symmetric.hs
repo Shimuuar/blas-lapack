@@ -14,6 +14,17 @@
 module Data.Matrix.Symmetric (
     -- * Matrix data type
     Symmetric
+  , Hermitian
+    -- ** Implementation
+  , SymmetricRaw
+  , IsSymmetric
+  , IsHermitian
+    -- * Complex numbers
+  , NumberType
+  , IsReal
+  , IsComplex
+  , castSymmetric
+  , Conjugate(..)
   ) where
 
 import Control.Monad.Primitive
@@ -26,7 +37,11 @@ import Foreign.ForeignPtr
 import Foreign.Storable
 
 import qualified Data.Matrix.Symmetric.Mutable as M
+import           Data.Matrix.Symmetric.Mutable
+   ( IsSymmetric, IsHermitian, NumberType, IsReal, IsComplex, Conjugate(..) )
 import Data.Matrix.Generic
+
+import Unsafe.Coerce
 
 
 
@@ -34,26 +49,60 @@ import Data.Matrix.Generic
 -- Data type
 ----------------------------------------------------------------
 
--- | Immutable dense matrix
-data Symmetric a = Symmetric {-# UNPACK #-} !Int -- N of rows
-                             {-# UNPACK #-} !Int -- Leading dim size
-                             {-# UNPACK #-} !(ForeignPtr a)
+-- | Immutable symmetric or hermitian matrix
+data SymmetricRaw tag a = SymmetricRaw
+                          {-# UNPACK #-} !Int -- N of rows
+                          {-# UNPACK #-} !Int -- Leading dim size
+                          {-# UNPACK #-} !(ForeignPtr a)
               deriving ( Typeable )
 
-type instance G.Mutable Symmetric = M.MSymmetric
+type Symmetric = SymmetricRaw IsSymmetric
+
+type Hermitian = SymmetricRaw IsHermitian
 
 
-instance NFData (Symmetric a)
 
-instance Storable a => IsMatrix Symmetric a where
-  basicRows (Symmetric n _ _) = n
+type instance G.Mutable (SymmetricRaw tag) = M.MSymmetricRaw tag
+
+
+
+instance NFData (SymmetricRaw tag a)
+
+instance Storable a => IsMatrix (SymmetricRaw IsSymmetric) a where
+  basicRows (SymmetricRaw n _ _) = n
   {-# INLINE basicRows #-}
-  basicCols (Symmetric n _ _) = n
+  basicCols (SymmetricRaw n _ _) = n
   {-# INLINE basicCols #-}
-  basicUnsafeIndex (Symmetric _ lda fp) (M.symmIndex -> (i,j))
+  basicUnsafeIndex (SymmetricRaw _ lda fp) (M.symmIndex -> (i,j))
     = unsafeInlineIO $ withForeignPtr fp $ \p -> peekElemOff p (i + lda * j)
   {-# INLINE basicUnsafeIndex  #-}
-  basicUnsafeThaw   (Symmetric    n lda fp) = return $! M.MSymmetric n lda fp
+  basicUnsafeThaw   (SymmetricRaw    n lda fp) = return $! M.MSymmetricRaw n lda fp
   {-# INLINE basicUnsafeThaw   #-}
-  basicUnsafeFreeze (M.MSymmetric n lda fp) = return $! Symmetric    n lda fp
+  basicUnsafeFreeze (M.MSymmetricRaw n lda fp) = return $! SymmetricRaw    n lda fp
   {-# INLINE basicUnsafeFreeze #-}
+
+
+instance (M.Conjugate a, Storable a) => IsMatrix (SymmetricRaw IsHermitian) a where
+  basicRows (SymmetricRaw n _ _) = n
+  {-# INLINE basicRows #-}
+  basicCols (SymmetricRaw n _ _) = n
+  {-# INLINE basicCols #-}
+  basicUnsafeIndex (SymmetricRaw _ lda fp) (M.symmIndex -> (i,j))
+    = unsafeInlineIO
+    $ withForeignPtr fp $ \p ->
+        case () of
+          _| i > j     -> conjugateNum `fmap` peekElemOff p (j + i*lda)
+           | otherwise ->                     peekElemOff p (i + j*lda)
+  {-# INLINE basicUnsafeIndex  #-}
+  basicUnsafeThaw   (SymmetricRaw    n lda fp) = return $! M.MSymmetricRaw n lda fp
+  {-# INLINE basicUnsafeThaw   #-}
+  basicUnsafeFreeze (M.MSymmetricRaw n lda fp) = return $! SymmetricRaw    n lda fp
+  {-# INLINE basicUnsafeFreeze #-}
+
+
+-- | Cast between symmetric and hermitian matrices is data parameter
+--   is real.
+castSymmetric :: (NumberType a ~ IsReal)
+              => SymmetricRaw tag a -> SymmetricRaw tag' a
+{-# INLINE castSymmetric #-}
+castSymmetric = unsafeCoerce

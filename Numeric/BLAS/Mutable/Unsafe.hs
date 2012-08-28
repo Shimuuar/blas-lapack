@@ -206,17 +206,17 @@ instance S.Storable a => MultTMV MMatrix a where
                   b py (blasStride y)
   {-# INLINE unsafeMultTMV #-}
 
-instance S.Storable a => MultMV MSymmetric a where
-  unsafeMultMV α (MSymmetric n lda fp) x β y
-    = unsafePrimToPrim
-    $ withForeignPtr fp           $ \pa ->
-      withForeignPtr (blasFPtr x) $ \px ->
-      withForeignPtr (blasFPtr y) $ \py ->
-        BLAS.hemv ColMajor Upper
-                  n α pa lda
-                    px (blasStride x)
-                  β py (blasStride y)
-  {-# INLINE unsafeMultMV #-}
+-- instance S.Storable a => MultMV MSymmetric a where
+--   unsafeMultMV α (MSymmetric n lda fp) x β y
+--     = unsafePrimToPrim
+--     $ withForeignPtr fp           $ \pa ->
+--       withForeignPtr (blasFPtr x) $ \px ->
+--       withForeignPtr (blasFPtr y) $ \py ->
+--         BLAS.hemv ColMajor Upper
+--                   n α pa lda
+--                     px (blasStride x)
+--                   β py (blasStride y)
+--   {-# INLINE unsafeMultMV #-}
 
 
 
