@@ -23,6 +23,8 @@ module Data.Matrix.Generic (
     -- * Converions to/from mutable
   , unsafeFreeze
   , unsafeThaw
+    -- * Conversion to string
+  , showMatrixWith
     -- * Newtype wrappers
   , Transposed(..)
   , Conjugated(..)
@@ -30,6 +32,7 @@ module Data.Matrix.Generic (
 
 import Control.Monad             (liftM)
 import Control.Monad.Primitive
+import Data.List                 (intercalate)
 import Data.Complex              (Complex,conjugate)
 import qualified Data.Matrix.Generic.Mutable as M
 import           Data.Vector.Generic           (Mutable)
@@ -105,6 +108,17 @@ unsafeFreeze = basicUnsafeFreeze
 unsafeThaw :: (PrimMonad m, IsMatrix mat a) => mat a -> m (Mutable mat (PrimState m) a)
 {-# INLINE unsafeThaw #-}
 unsafeThaw = basicUnsafeThaw
+
+
+-- | Generic function for printing matrix. Mostly useful for debugging
+--   purposes.
+showMatrixWith :: IsMatrix m a => (a -> String) -> m a -> String
+showMatrixWith f m
+  = unlines
+  $ (show (rows m) ++ " >< " ++ show (cols m))
+  : [ intercalate "\t" [f $ unsafeIndex m (i,j) | j <- [0 .. cols m - 1]]
+    | i <- [0 .. rows m - 1]
+    ]
 
 
 
