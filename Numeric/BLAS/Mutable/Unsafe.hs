@@ -1,3 +1,4 @@
+{-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE FlexibleInstances     #-}
 -- |
@@ -66,7 +67,8 @@ import qualified Data.Vector.Storable.Strided.Mutable as V
 import qualified Data.Matrix.Generic.Mutable          as M
 -- Concrete matrices
 import           Data.Matrix.Dense.Mutable     (MMatrix(..))
-import           Data.Matrix.Symmetric.Mutable (MSymmetric(..))
+import           Data.Matrix.Symmetric.Mutable
+  (MSymmetricRaw(..),IsSymmetric,IsHermitian,Conjugate(..), NumberType, IsReal)
 
 
 
@@ -206,18 +208,26 @@ instance S.Storable a => MultTMV MMatrix a where
                   b py (blasStride y)
   {-# INLINE unsafeMultTMV #-}
 
--- instance S.Storable a => MultMV MSymmetric a where
---   unsafeMultMV α (MSymmetric n lda fp) x β y
---     = unsafePrimToPrim
---     $ withForeignPtr fp           $ \pa ->
---       withForeignPtr (blasFPtr x) $ \px ->
---       withForeignPtr (blasFPtr y) $ \py ->
---         BLAS.hemv ColMajor Upper
---                   n α pa lda
---                     px (blasStride x)
---                   β py (blasStride y)
---   {-# INLINE unsafeMultMV #-}
+instance (S.Storable a, NumberType a ~ IsReal) => MultMV (MSymmetricRaw IsSymmetric) a where
+  unsafeMultMV = multHermtianMV
+  {-# INLINE unsafeMultMV #-}
+instance (S.Storable a, Conjugate a) => MultMV (MSymmetricRaw IsHermitian) a where
+  unsafeMultMV = multHermtianMV
+  {-# INLINE unsafeMultMV #-}
 
+-- Worker for symmetric/hermitian matrix multiplication
+multHermtianMV :: (PrimMonad m, BLAS2 a, MVectorBLAS v)
+               => a -> MSymmetricRaw tag s a -> v s a -> a -> v s a -> m ()
+{-# INLINE multHermtianMV #-}
+multHermtianMV α (MSymmetricRaw n lda fp) x β y
+  = unsafePrimToPrim
+  $ withForeignPtr fp           $ \pa ->
+    withForeignPtr (blasFPtr x) $ \px ->
+    withForeignPtr (blasFPtr y) $ \py ->
+      BLAS.hemv ColMajor Upper
+                n α pa lda
+                  px (blasStride x)
+                β py (blasStride y)
 
 
 -- | Compute vector-vector product:

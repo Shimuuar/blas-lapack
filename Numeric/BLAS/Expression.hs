@@ -460,10 +460,17 @@ instance Storable a => Freeze MatD.Matrix a where
   unsafeFreeze = Mat.unsafeFreeze
   unsafeThaw   = Mat.unsafeThaw
 
-instance Storable a => Clonable MMatS.MSymmetric a where
+instance (Storable a) => Clonable (MMatS.MSymmetricRaw MMatS.IsSymmetric) a where
   cloneShape = MMat.cloneShape
   clone      = MMat.clone
-instance Storable a => Freeze MatS.Symmetric a where
+instance Storable a => Freeze (MatS.SymmetricRaw MMatS.IsSymmetric) a where
+  unsafeFreeze = Mat.unsafeFreeze
+  unsafeThaw   = Mat.unsafeThaw
+
+instance (Storable a, MMatS.Conjugate a) => Clonable (MMatS.MSymmetricRaw MMatS.IsHermitian) a where
+  cloneShape = MMat.cloneShape
+  clone      = MMat.clone
+instance (Storable a, MMatS.Conjugate a) => Freeze (MatS.SymmetricRaw MMatS.IsHermitian) a where
   unsafeFreeze = Mat.unsafeFreeze
   unsafeThaw   = Mat.unsafeThaw
 
