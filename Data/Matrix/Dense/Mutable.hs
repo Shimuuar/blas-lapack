@@ -104,7 +104,8 @@ new (!nR,!nC) = do
 -- Accessors
 ----------------------------------------------------------------
 
--- | Get n'th row of matrix as mutable vector.
+-- | Get n'th row of matrix as mutable vector. It shares same memory
+--   location as original matrix.
 getRow :: Storable a => MMatrix s a -> Int -> MVector s a
 {-# INLINE getRow #-}
 getRow m i
@@ -112,21 +113,24 @@ getRow m i
   | otherwise            = unsafeGetRow m i
 
 
--- | Get n'th column of matrix as mutable vector.
+-- | Get n'th column of matrix as mutable vector. It shares same memory
+--   location as original matrix.
 getCol :: Storable a => MMatrix s a -> Int -> MVector s a
 {-# INLINE getCol #-}
 getCol m i
   | i < 0 || i >= cols m = error "Data.Matrix.Dense.Mutable.getRow: column number out of bounds"
   | otherwise            = unsafeGetCol m i
 
--- | Get n'th row of matrix as mutable vector. No range checks performed.
+-- | Get n'th row of matrix as mutable vector. No range checks
+--   performed. It shares same memory location as original matrix.
 unsafeGetRow :: Storable a => MMatrix s a -> Int -> MVector s a
 {-# INLINE unsafeGetRow #-}
 unsafeGetRow (MMatrix _ nC lda fp) i
   = MVector nC lda $ updPtr (`advancePtr` i) fp
 
 
--- | Get n'th column of matrix as mutable vector. No range checks performed.
+-- | Get n'th column of matrix as mutable vector. No range checks
+--   performed. It shares same memory location as original matrix.
 unsafeGetCol :: Storable a => MMatrix s a -> Int -> MVector s a
 {-# INLINE unsafeGetCol #-}
 unsafeGetCol (MMatrix nR _ lda fp) i
