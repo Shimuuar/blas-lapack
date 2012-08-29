@@ -159,7 +159,7 @@ instance (BLAS1 a) => Scale V.Vector a where
 
 
 ----------------------------------------------------------------
--- Vector x Vector
+-- Dot product
 ----------------------------------------------------------------
 
 instance (BLAS1 a, a ~ a') => Mul (Transposed S.Vector a) (S.Vector a') where
@@ -176,7 +176,10 @@ instance (BLAS1 a, a ~ a') => Mul (Transposed V.Vector a) (V.Vector a') where
   {-# INLINE (.*.) #-}
 
 
--- == Vector x Vector => Matrix ====
+
+----------------------------------------------------------------
+--  Vector x Vector => Matrix
+----------------------------------------------------------------
 
 instance (BLAS2 a, a ~ a') => Mul (S.Vector a) (Transposed S.Vector a') where
   type MulRes (           S.Vector a )
@@ -208,11 +211,10 @@ instance (BLAS2 a, a ~ a') => Mul (V.Vector a) (Conjugated V.Vector a') where
 
 
 ----------------------------------------------------------------
--- Matrix x Vector
+-- Dense matrix x Vector
 ----------------------------------------------------------------
 
 -- Strided
-
 instance (BLAS2 a, a ~ a') => Mul (Matrix a) (V.Vector a') where
   type MulRes (Matrix   a )
               (V.Vector a')
@@ -233,7 +235,6 @@ instance (BLAS2 a, a ~ a') => Mul (Conjugated Matrix a) (V.Vector a') where
   {-# INLINE (.*.) #-}
 
 -- Storable
-
 instance (BLAS2 a, a ~ a') => Mul (Matrix a) (S.Vector a') where
   type MulRes (Matrix   a )
               (S.Vector a')
@@ -253,6 +254,11 @@ instance (BLAS2 a, a ~ a') => Mul (Conjugated Matrix a) (S.Vector a') where
   Conjugated m .*. v = eval $ MulTMV () ConjTrans (Lit m) (Lit v)
   {-# INLINE (.*.) #-}
 
+
+
+----------------------------------------------------------------
+-- Symmetric matrix x Vector
+----------------------------------------------------------------
 
 instance (BLAS2 a, Conjugate a, a ~ a') => Mul (SymmetricRaw IsHermitian a) (S.Vector a') where
   type MulRes (SymmetricRaw IsHermitian a)
