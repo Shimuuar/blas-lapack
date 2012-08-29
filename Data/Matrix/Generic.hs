@@ -21,6 +21,8 @@ module Data.Matrix.Generic (
   , (@!)
   , unsafeIndex
     -- * Converions to/from mutable
+  , freeze
+  , thaw
   , unsafeFreeze
   , unsafeThaw
     -- * Conversion to string
@@ -79,7 +81,7 @@ cols = basicCols
 
 
 -- | Indexing operator without range checking.
-unsafeIndex :: IsMatrix mat a 
+unsafeIndex :: IsMatrix mat a
             => mat a            -- ^ Matrix
             -> (Int,Int)        -- ^ (row,column)
             -> a
@@ -97,6 +99,20 @@ m @! a@(i,j)
   | i < 0 || i >= rows m = error "ROW"
   | j > 0 || j >= cols m = error "COL"
   | otherwise            = unsafeIndex m a
+
+
+-- | Convert mutable matrix to immutable.
+freeze :: (PrimMonad m, IsMatrix mat a) => Mutable mat (PrimState m) a -> m (mat a)
+{-# INLINE freeze #-}
+freeze m = do
+  unsafeFreeze =<< M.clone m
+
+
+-- | Convert immutable matrix to mutable.
+thaw :: (PrimMonad m, IsMatrix mat a) => mat a -> m (Mutable mat (PrimState m) a)
+{-# INLINE thaw #-}
+thaw m = do
+  M.clone =<< unsafeThaw m
 
 
 -- | Convert mutable matrix to immutable. Mutable matrix may not be
