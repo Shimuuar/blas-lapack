@@ -10,7 +10,7 @@
 -- Maintainer : Aleksey Khudyakov <alexey.skladnoy@gmail.com>
 -- Stability  : experimental
 --
--- BLAS operations on the immutable vectors
+-- BLAS operations for immutable vectors and matrices.
 module Numeric.BLAS (
     -- * Type class based API
     Add(..)
@@ -24,7 +24,6 @@ module Numeric.BLAS (
   , vectorNorm
   , absSum
   , absIndex
-    -- * Matrix vector operations
   ) where
 
 import Control.Monad.ST
@@ -71,7 +70,7 @@ instance (AddM (Mutable m) a, Freeze m a) => Add (m a) where
    x .-. y = eval $ Sub () (Lit x) (Lit y)
    {-# INLINE (.-.) #-}
 
--- | Scalar multiplication
+-- | Multiplication by scalar.
 class Scale v a where
   (*.) :: a -> v a -> v a
 

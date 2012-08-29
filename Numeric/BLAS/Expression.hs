@@ -6,11 +6,15 @@
 {-# LANGUAGE GADTs            #-}
 {-# LANGUAGE PatternGuards #-}
 -- |
+-- Module     : Numeric.BLAS.Expression
+-- Copyright  : Copyright (c) 2012 Aleksey Khudyakov <alexey.skladnoy@gmail.com>
+-- License    : BSD3
+-- Maintainer : Aleksey Khudyakov <alexey.skladnoy@gmail.com>
+-- Stability  : experimental
 --
 -- This module provides functions for building immutable API using
--- stateful primitives. All dirty work of converting syntax tree to
--- stateful computation is done here. Module 'Numeric.BLAS' provides
--- API for building them.
+-- stateful primitives. Implementation tries to reduce amount of BLAS
+-- calls and amount of allocation.
 module Numeric.BLAS.Expression (
     -- * Expression data type
     Expr(..)
@@ -112,7 +116,7 @@ class Scalable m a where
 
 
 -- | Elementwise addition and subtraction for mutable data. First
---   argument of 'addM' is modified in place.
+--   arguments of 'addM' and 'subM' are modified in place.
 --
 -- > x ← x + y
 -- > x ← x - y
@@ -132,37 +136,37 @@ class AddM m a where
 
 -- | Expression tree which is compiled by function 'eval'.
 data Expr m a where
-  -- | Literal value. Could not be altered.
+  -- Literal value. Could not be altered.
   Lit    :: Freeze m a => m a -> Expr m a
-  -- | Addition
+  -- Addition
   Add    :: (Freeze m a, AddM (Mutable m) a)
          => () -> Expr m a -> Expr m a -> Expr m a
-  -- | Subtraction
+  -- Subtraction
   Sub    :: (Freeze m a, AddM (Mutable m) a)
          => () -> Expr m a -> Expr m a -> Expr m a
-  -- | Scalar-X multiplication
+  -- Scalar-X multiplication
   Scale  :: (Freeze m a, BLAS1 a, Scalable (Mutable m) a)
          => () -> a -> Expr m a -> Expr m a
-  -- | vector x transposed vector => matrix
+  -- vector x transposed vector => matrix
   VecT   :: (Freeze v a, MVectorBLAS (Mutable v), BLAS2 a)
          => () -> Expr v a -> Expr v a -> Expr MatD.Matrix a
-  -- | vector x conjugate transposed vector => matrix
+  -- vector x conjugate transposed vector => matrix
   VecH   :: (Freeze v a, MVectorBLAS (Mutable v), BLAS2 a)
          => () -> Expr v a -> Expr v a -> Expr MatD.Matrix a
-  -- | Matrix-vector multiplication
+  -- Matrix-vector multiplication
   MulMV  :: ( MultMV (Mutable mat) a
             , MVectorBLAS (Mutable v), G.Vector v a
             , BLAS2 a
             , Freeze mat a, Freeze v a
             )
          => () -> Expr mat a -> Expr v a -> Expr v a
-  -- | Transformed matrix-vector multiplication
+  -- Transformed matrix-vector multiplication
   MulTMV :: ( MultTMV (Mutable mat) a
             , MVectorBLAS (Mutable v), G.Vector v a
             , BLAS2 a
             , Freeze mat a, Freeze v a )
          => () -> Trans -> Expr mat a -> Expr v a -> Expr v a
-  -- | Matrix-matrix multiplication for dense matrices
+  -- Matrix-matrix multiplication for dense matrices
   MulMM :: BLAS3 a
         => ()
         -> Trans -> Expr MatD.Matrix a
@@ -176,6 +180,9 @@ type Cont s = forall v a. Expr v a -> ST s (Mutable v s a)
 
 -- Evaluate expression. Returned expression could be mutated in place
 -- or unsafe-freezed.
+--
+-- To force GHC to evaluate recursive function trick described here is used:
+-- <http://unlines.wordpress.com/2009/11/05/tricking-ghc-into-evaluating-recursive-functions-at-compile-time/>
 evalST :: (() -> Cont s) -> Expr m a -> ST s (Mutable m s a)
 {-# INLINE evalST #-}
 -- Reduce double scale.
@@ -301,10 +308,6 @@ evalST' _ = evalST evalST'
 -- | Evaluate expression. If expression is known statically which is
 --   the case if it was built using combinators from 'Numeric.BLAS' it
 --   will evaluated at compile time.
---
---   To force GHC to evaluate recursive function trick described here
---   is used:
---   http://unlines.wordpress.com/2009/11/05/tricking-ghc-into-evaluating-recursive-functions-at-compile-time/
 eval :: Freeze m a => Expr m a -> m a
 {-# INLINE[1] eval #-}
 eval x = runST $ do

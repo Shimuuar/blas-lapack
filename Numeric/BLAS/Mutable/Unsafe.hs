@@ -8,27 +8,19 @@
 -- Maintainer : Aleksey Khudyakov <alexey.skladnoy@gmail.com>
 -- Stability  : experimental
 --
--- BLAS interface for mutable data structures.
+-- BLAS interface for mutable data structures. This is more or less
+-- direct mapping of BLAS operation onto mutable vectors and
+-- matrices. There is very little sugar on top of it. API only hides
+-- pointers from plain view and provide a bit less cryptic names.
 --
--- This is more or less direct mapping of BLAS operation onto mutable
--- vectors and matrices. There is very little sugar on top of it. API
--- only hides pointers from plain view and provide little less cryptic
--- names.
---
--- This module provides unsafe function that doesn't check that
--- dimensions of vectors and matrices match. These function have
--- /unsafe/ prefix. Some function do not need any checking so they
--- don't have prefix. Checked versions are provided by
--- 'Numeric.BLAS.Mutable' module.
+-- Functions which really need checks and could possible return
+-- garbage of even worse corrupt memory have /unsafe/
+-- prefix. Functions which are not really unsafe do not have such.
+-- Checked versions are provided by "Numeric.BLAS.Mutable" module.
 module Numeric.BLAS.Mutable.Unsafe (
-    -- * BLAS data types
-    BLAS1
-  , BLAS2
-  , BLAS3
-  , Trans(..)
     -- * Level 1 BLAS (Vector-vector operations)
     -- ** Low level data copying
-  , unsafeCopy
+    unsafeCopy
   , unsafeSwap
     -- ** \"Pure\" functions
   , unsafeDotProduct
@@ -46,6 +38,11 @@ module Numeric.BLAS.Mutable.Unsafe (
   , unsafeCrossHVV
     -- * Level 3 BLAS (Matrix-matrix operations)
   , unsafeMultMM
+    -- * BLAS type classes and data types
+  , BLAS1
+  , BLAS2
+  , BLAS3
+  , Trans(..)
     -- * Type classes and helpers
   , MVectorBLAS(..)
   , colsT

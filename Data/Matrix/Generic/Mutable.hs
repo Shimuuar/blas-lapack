@@ -9,7 +9,8 @@
 -- Maintainer : Aleksey Khudyakov <alexey.skladnoy@gmail.com>
 -- Stability  : experimental
 --
--- Generic mutable matrix interface
+-- Interface for generic mutable matrices. For matrix transposition
+-- and conjugate transposition newtype wrappers are used.
 module Data.Matrix.Generic.Mutable (
     -- * Type class
     IsMMatrix(..)
@@ -36,7 +37,9 @@ import Prelude hiding (read)
 -- Type class
 ----------------------------------------------------------------
 
--- | API for mutable matrices. Matrices
+-- | Type class of mutable matrices. Since there's many way to lay
+--   matrix in memory there isn't many operation which work for all of
+--   them.
 --
 --   Indexing uses following form: @(row,column)@
 class IsMMatrix mat a where

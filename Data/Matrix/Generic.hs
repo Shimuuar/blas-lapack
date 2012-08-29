@@ -9,12 +9,12 @@
 -- Maintainer : Aleksey Khudyakov <alexey.skladnoy@gmail.com>
 -- Stability  : experimental
 --
--- Generic immutable matrix interface  There are many different kinds
--- of matrices. They all support different operations so common API
--- is quite poor.
+-- Interface for generic immutable matrices. For matrix transposition
+-- and conjugate transposition newtype wrappers are used.
 module Data.Matrix.Generic (
     -- * Type class
     IsMatrix(..)
+  , Mutable
     -- * Accessors
   , rows
   , cols
@@ -42,7 +42,9 @@ import           Data.Vector.Generic           (Mutable)
 -- Type class
 ----------------------------------------------------------------
 
--- | Basic API for immutable matrices.
+-- | Basic API for immutable matrices. Since there's many way to lay
+--   matrix in memory there isn't many operation which work for all of
+--   them.
 --
 --   Methods of this type class shouldn't be used directly.
 class M.IsMMatrix (Mutable mat) a => IsMatrix mat a where

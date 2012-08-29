@@ -7,21 +7,16 @@
 -- Maintainer : Aleksey Khudyakov <alexey.skladnoy@gmail.com>
 -- Stability  : experimental
 --
--- BLAS interface for mutable data structures.
---
--- This is more or less direct mapping of BLAS operation onto mutable
--- vectors and matrices. There is very little sugar on top of it. API
--- only hides pointers from plain view and provide little less cryptic
--- names.
+-- BLAS interface for mutable data structures. This is more or less
+-- direct mapping of BLAS operation onto mutable vectors and
+-- matrices. There is very little sugar on top of it. API only hides
+-- pointers from plain view and provide little less cryptic names.
+-- Unchecked variants are provided by module
+-- "Numeric.BLAS.Mutable.Unsafe".
 module Numeric.BLAS.Mutable (
-    -- * BLAS data types
-    BLAS1
-  , BLAS2
-  , BLAS3
-  , Trans(..)
     -- * Level 1 BLAS (Vector-vector operations)
     -- ** Low level data copying
-  , copy
+    copy
   , swap
   , unsafeCopy
   , unsafeSwap
@@ -45,6 +40,11 @@ module Numeric.BLAS.Mutable (
   , crossHVV
     -- * Level 3 BLAS (Matrix-matrix operations)
   , multMM
+    -- * BLAS type classes and data types
+  , BLAS1
+  , BLAS2
+  , BLAS3
+  , Trans(..)
     -- * Type classes and helpers
   , MVectorBLAS(..)
   , colsT
