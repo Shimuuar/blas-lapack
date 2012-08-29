@@ -23,6 +23,8 @@ module Data.Matrix.Symmetric.Mutable (
   , IsHermitian
     -- * Function
   , new
+  , symmetricAsDense
+  , hermitianAsDense
   , symmIndex
     -- * Complex number
   , NumberType
@@ -48,6 +50,7 @@ import Foreign.Storable
 import Data.Internal
 import Data.Vector.Storable.Strided.Mutable
 import Data.Matrix.Generic.Mutable
+import Data.Matrix.Dense.Mutable   (MMatrix(..))
 
 import Unsafe.Coerce
 
@@ -149,6 +152,38 @@ new :: (PrimMonad m, Storable a)
 new n = do
   fp <- unsafePrimToPrim $ mallocVector $ n * n
   return $ MSymmetricRaw n n fp
+
+
+-- | Convert to dense matrix. Dense matrix will use same buffer as
+--   symmetric
+symmetricAsDense
+  :: (PrimMonad m, Storable a)
+  => MSymmetricRaw IsSymmetric (PrimState m) a
+  -> m (MMatrix (PrimState m) a)
+symmetricAsDense (MSymmetricRaw n lda fp) = do
+  let m = MMatrix n n lda fp
+  forM_ [0 .. n-2] $ \i -> do
+    let row = MVector (n-i-1) lda $ updPtr (`advancePtr` (  i + (i+1) * lda)) fp
+        col = MVector (n-i-1) 1   $ updPtr (`advancePtr` (1+i +    i  * lda)) fp
+    M.move col row
+  return m
+
+
+-- | Convert to dense matrix. Dense matrix will use same buffer as
+--   symmetric
+hermitianAsDense
+  :: (PrimMonad m, Storable a, Conjugate a)
+  => MSymmetricRaw IsSymmetric (PrimState m) a
+  -> m (MMatrix (PrimState m) a)
+hermitianAsDense (MSymmetricRaw n lda fp) = do
+  let m = MMatrix n n lda fp
+  forM_ [0 .. n-2] $ \i -> do
+    let len = n - i - 1
+        row = MVector (n-i-1) lda $ updPtr (`advancePtr` (  i + (i+1) * lda)) fp
+        col = MVector (n-i-1) 1   $ updPtr (`advancePtr` (1+i +    i  * lda)) fp
+    forM_ [0 .. len - 1] $ \j -> do
+      M.unsafeWrite col j . conjugateNum =<< M.unsafeRead row j
+  return m
 
 
 
