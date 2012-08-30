@@ -26,6 +26,7 @@ module Numeric.BLAS.Expression (
   , AddM(..)
   ) where
 
+import Control.Monad
 import Control.Monad.ST
 
 import qualified Data.Vector.Generic as G
@@ -582,6 +583,11 @@ instance BLAS1 a => Scalable MV.MVector a where
   scale = scaleVector
 instance BLAS1 a => Scalable MS.MVector a where
   scale = scaleVector
+instance BLAS1 a => Scalable MMatD.MMatrix a where
+  scale α m = do
+    forM_ [0 .. MMat.cols m - 1] $ \i -> do
+      scaleVector α $ MMatD.unsafeGetCol m i
+
 
 instance BLAS1 a => AddM MV.MVector a where
   addM x y = addVecScaled   1  y x
