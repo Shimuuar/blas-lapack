@@ -70,9 +70,15 @@ instance (AddM (Mutable m) a, Freeze m a) => Add (m a) where
    x .-. y = eval $ Sub () (Lit x) (Lit y)
    {-# INLINE (.-.) #-}
 
+
 -- | Multiplication by scalar.
 class Scale v a where
   (*.) :: a -> v a -> v a
+
+instance (Num a, Scalable (Mutable m) a, Freeze m a) => Scale m a where
+  α *. v = eval $ Scale () α (Lit v)
+  {-# INLINE (*.) #-}
+
 
 -- | Very overloaded operator for matrix and vector multiplication.
 class Mul v u where

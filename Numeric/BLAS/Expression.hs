@@ -146,7 +146,7 @@ data Expr m a where
   Sub    :: (Freeze m a, AddM (Mutable m) a)
          => () -> Expr m a -> Expr m a -> Expr m a
   -- Scalar-X multiplication
-  Scale  :: (Freeze m a, BLAS1 a, Scalable (Mutable m) a)
+  Scale  :: (Freeze m a, Num a, Scalable (Mutable m) a)
          => () -> a -> Expr m a -> Expr m a
   -- vector x transposed vector => matrix
   VecT   :: (Freeze v a, MVectorBLAS (Mutable v), BLAS2 a)
