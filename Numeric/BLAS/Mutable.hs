@@ -40,11 +40,14 @@ module Numeric.BLAS.Mutable (
   , crossHVV
     -- * Level 3 BLAS (Matrix-matrix operations)
   , multMM
+  , multSymMM
+  , multHerMM
     -- * BLAS type classes and data types
   , BLAS1
   , BLAS2
   , BLAS3
   , Trans(..)
+  , Side(..)
     -- * Type classes and helpers
   , MVectorBLAS(..)
   , colsT
@@ -55,6 +58,8 @@ import Control.Monad.Primitive
 
 import qualified Data.Matrix.Generic.Mutable          as M
 import qualified Data.Matrix.Dense.Mutable            as MD
+import Data.Matrix.Dense.Mutable     (MMatrix)
+import Data.Matrix.Symmetric.Mutable (MSymmetric,MHermitian,Conjugate)
 
 import Numeric.BLAS.Mutable.Unsafe
 
@@ -193,7 +198,7 @@ crossHVV a v u m
 -- Level 3 BLAS
 ----------------------------------------------------------------
 
--- | Unsafe multiplication of dense matrices:
+-- | Multiplication of dense matrices:
 --
 -- > C ← α·op(A)·op(B) + β·C
 multMM :: (PrimMonad m, BLAS3 a)
@@ -215,3 +220,54 @@ multMM a ta ma tb mb b mc
     rowA = rowsT ta ma ; colA = colsT ta ma
     rowB = rowsT tb mb ; colB = colsT tb mb
     rowC = M.rows   mc ; colC = M.cols   mc
+
+
+-- | Multiplication of dense matrix /B/ by symmetric matrix
+--   /A/. It could be one of operations.
+--
+-- > C ← α·A·B + β·C
+-- > C ← α·B·A + β·C
+multSymMM :: (PrimMonad m, BLAS3 a)
+          => Side                       -- ^ On which side matrix /A/ appears
+          -> a                          -- ^ /α/
+          -> MSymmetric (PrimState m) a -- ^ /A/
+          -> MMatrix    (PrimState m) a -- ^ /B/
+          -> a                          -- ^ /β/
+          -> MMatrix    (PrimState m) a -- ^ /C/
+          -> m ()
+{-# INLINE multSymMM #-}
+multSymMM side α ma mb β mc
+  | M.rows ma /= M.rows mc = error "!"
+  | M.cols ma /= M.cols mc = error "!"
+  | not okB                = error "!"
+  | otherwise              = unsafeMultSymMM side α ma mb β mc
+  where
+    ordB = M.cols mb
+    okB  = case side of
+             RightSide -> ordB == M.rows ma
+             LeftSide  -> ordB == M.cols ma
+
+-- | Multiplication of dense matrix /B/ by hermitian matrix
+--   /A/. It could be one of operations.
+--
+-- > C ← α·A·B + β·C
+-- > C ← α·B·A + β·C
+multHerMM :: (PrimMonad m, BLAS3 a, Conjugate a)
+          => Side                       -- ^ On which side matrix /A/ appears
+          -> a                          -- ^ /α/
+          -> MHermitian (PrimState m) a -- ^ /A/
+          -> MMatrix    (PrimState m) a -- ^ /B/
+          -> a                          -- ^ /β/
+          -> MMatrix    (PrimState m) a -- ^ /C/
+          -> m ()
+{-# INLINE multHerMM #-}
+multHerMM side α ma mb β mc
+  | M.rows ma /= M.rows mc = error "!"
+  | M.cols ma /= M.cols mc = error "!"
+  | not okB                = error "!"
+  | otherwise              = unsafeMultHerMM side α ma mb β mc
+  where
+    ordB = M.cols mb
+    okB  = case side of
+             RightSide -> ordB == M.rows ma
+             LeftSide  -> ordB == M.cols ma

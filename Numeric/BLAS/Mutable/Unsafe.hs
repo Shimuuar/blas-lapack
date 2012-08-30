@@ -38,11 +38,14 @@ module Numeric.BLAS.Mutable.Unsafe (
   , unsafeCrossHVV
     -- * Level 3 BLAS (Matrix-matrix operations)
   , unsafeMultMM
+  , unsafeMultSymMM
+  , unsafeMultHerMM
     -- * BLAS type classes and data types
   , BLAS1
   , BLAS2
   , BLAS3
   , Trans(..)
+  , Side(..)
     -- * Type classes and helpers
   , MVectorBLAS(..)
   , colsT
@@ -56,7 +59,7 @@ import Foreign.ForeignPtr
 
 import qualified Numeric.BLAS.Bindings as BLAS
 import           Numeric.BLAS.Bindings   (BLAS1,BLAS2,BLAS3,RealType,
-                                          RowOrder(..), Trans(..), Uplo(..)
+                                          RowOrder(..), Trans(..), Uplo(..), Side
                                          )
 
 import qualified Data.Vector.Storable                 as S
@@ -65,7 +68,7 @@ import qualified Data.Matrix.Generic.Mutable          as M
 -- Concrete matrices
 import           Data.Matrix.Dense.Mutable     (MMatrix(..))
 import           Data.Matrix.Symmetric.Mutable
-  (MSymmetricRaw(..),IsSymmetric,IsHermitian,Conjugate(..), NumberType, IsReal)
+  (MSymmetric,MHermitian,MSymmetricRaw(..),IsSymmetric,IsHermitian,Conjugate(..),NumberType,IsReal)
 
 
 
@@ -292,6 +295,58 @@ unsafeMultMM a ta ma@(MMatrix _ _ lda fpa) tb (MMatrix _ _ ldb fpb) b (MMatrix r
                 rows cols (colsT ta ma)
                 a pa lda pb ldb
                 b pc ldc
+
+-- | Unsafe multiplication of dense matrix /B/ by symmetric matrix
+--   /A/. It could be one of operations.
+--
+-- > C ← α·A·B + β·C
+-- > C ← α·B·A + β·C
+unsafeMultSymMM :: (PrimMonad m, BLAS3 a)
+                => Side                       -- ^ On which side matrix /A/ appears
+                -> a                          -- ^ /α/
+                -> MSymmetric (PrimState m) a -- ^ /A/
+                -> MMatrix    (PrimState m) a -- ^ /B/
+                -> a                          -- ^ /β/
+                -> MMatrix    (PrimState m) a -- ^ /C/
+                -> m ()
+{-# INLINE unsafeMultSymMM #-}
+unsafeMultSymMM side α (MSymmetricRaw _ lda fpa) (MMatrix _ _ ldb fpb) β m@(MMatrix _ _ ldc fpc)
+  = unsafePrimToPrim
+  $ withForeignPtr fpa $ \pa ->
+    withForeignPtr fpb $ \pb ->
+    withForeignPtr fpc $ \pc ->
+      BLAS.symm ColMajor side Upper
+        (M.rows m) (M.cols m)
+        α pa lda
+          pb ldb
+        β pc ldc
+
+-- | Unsafe multiplication of dense matrix /B/ by hermitian matrix
+--   /A/. It could be one of operations.
+--
+-- > C ← α·A·B + β·C
+-- > C ← α·B·A + β·C
+unsafeMultHerMM :: (PrimMonad m, BLAS3 a)
+                => Side                       -- ^ On which side matrix /A/ appears
+                -> a                          -- ^ /α/
+                -> MHermitian (PrimState m) a -- ^ /A/
+                -> MMatrix    (PrimState m) a -- ^ /B/
+                -> a                          -- ^ /β/
+                -> MMatrix    (PrimState m) a -- ^ /C/
+                -> m ()
+{-# INLINE unsafeMultHerMM #-}
+unsafeMultHerMM side α (MSymmetricRaw _ lda fpa) (MMatrix _ _ ldb fpb) β m@(MMatrix _ _ ldc fpc)
+  = unsafePrimToPrim
+  $ withForeignPtr fpa $ \pa ->
+    withForeignPtr fpb $ \pb ->
+    withForeignPtr fpc $ \pc ->
+      BLAS.hemm ColMajor side Upper
+        (M.rows m) (M.cols m)
+        α pa lda
+          pb ldb
+        β pc ldc
+
+
 
 
 
