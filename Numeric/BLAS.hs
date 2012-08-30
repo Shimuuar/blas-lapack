@@ -346,3 +346,44 @@ instance (BLAS3 a, a ~ a') => Mul (Conjugated Matrix a) (Conjugated Matrix a') w
              = Matrix a
   Conjugated m .*. Conjugated n = eval $ MulMM () ConjTrans (Lit m) ConjTrans (Lit n)
   {-# INLINE (.*.) #-}
+
+
+
+
+----------------------------------------------------------------
+-- Symmetric matrix x Dense matrix
+----------------------------------------------------------------
+
+instance (BLAS3 a, a ~ a') => Mul (Matrix a) (SymmetricRaw IsSymmetric a') where
+  type MulRes (Matrix a)
+              (SymmetricRaw IsSymmetric a')
+             = Matrix a
+  m .*. sym = eval $ MulSymMM () M.RightSide (Lit sym) (Lit m)
+  {-# INLINE (.*.) #-}
+
+instance (BLAS3 a, a ~ a') => Mul (SymmetricRaw IsSymmetric a') (Matrix a) where
+  type MulRes (SymmetricRaw IsSymmetric a')
+              (Matrix a)
+             = Matrix a
+  sym .*. m = eval $ MulSymMM () M.LeftSide (Lit sym) (Lit m)
+  {-# INLINE (.*.) #-}
+
+
+
+----------------------------------------------------------------
+-- Symmetric matrix x Dense matrix
+----------------------------------------------------------------
+
+instance (BLAS3 a, Conjugate a, a ~ a') => Mul (Matrix a) (SymmetricRaw IsHermitian a') where
+  type MulRes (Matrix a)
+              (SymmetricRaw IsHermitian a')
+             = Matrix a
+  m .*. sym = eval $ MulHerMM () M.RightSide (Lit sym) (Lit m)
+  {-# INLINE (.*.) #-}
+
+instance (BLAS3 a, Conjugate a, a ~ a') => Mul (SymmetricRaw IsHermitian a') (Matrix a) where
+  type MulRes (SymmetricRaw IsHermitian a')
+              (Matrix a)
+             = Matrix a
+  sym .*. m = eval $ MulHerMM () M.LeftSide (Lit sym) (Lit m)
+  {-# INLINE (.*.) #-}
