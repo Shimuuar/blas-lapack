@@ -220,7 +220,7 @@ evalST cont (Add _ (Scale _ β u)            (MulMV q m v))  | Just u_ <- mutabl
 evalST cont (Add _ (Scale _ β u) (Scale _ α (MulMV q m v))) | Just u_ <- mutable (cont q) u = inplaceEvalMV (cont q)   α  m v β =<< u_
 -- NOTE: y ← α·A·x + β·y   | for subtraction coefficient α must be negated
 evalST cont (Sub _            u             (MulMV q m v))  | Just u_ <- mutable (cont q) u = inplaceEvalMV (cont q) (-1) m v 1 =<< u_
-evalST cont (Sub _            u  (Scale _ α (MulMV q m v))) | Just u_ <- mutable (cont q) u = inplaceEvalMV (cont q) (-α) m v 1 =<< u_
+evalST cont (Sub _ (Scale _ β u)            (MulMV q m v))  | Just u_ <- mutable (cont q) u = inplaceEvalMV (cont q) (-1) m v β =<< u_
 --
 -- * op(Matrix) x Vector
 evalST cont (Add _            u             (MulTMV q t m v))  | Just u_ <- mutable (cont q) u = inplaceEvalTMV (cont q)   1  t m v 1 =<< u_
@@ -229,7 +229,7 @@ evalST cont (Add _ (Scale _ β u)            (MulTMV q t m v))  | Just u_ <- mut
 evalST cont (Add _ (Scale _ β u) (Scale _ α (MulTMV q t m v))) | Just u_ <- mutable (cont q) u = inplaceEvalTMV (cont q)   α  t m v β =<< u_
 -- NOTE: C ← α·op(A)·op(B) + β·C   | for subtraction coefficient α must be negated
 evalST cont (Sub _            u             (MulTMV q t m v))  | Just u_ <- mutable (cont q) u = inplaceEvalTMV (cont q) (-1) t m v 1 =<< u_
-evalST cont (Sub _            u  (Scale _ α (MulTMV q t m v))) | Just u_ <- mutable (cont q) u = inplaceEvalTMV (cont q) (-α) t m v 1 =<< u_
+evalST cont (Sub _ (Scale _ β u)            (MulTMV q t m v))  | Just u_ <- mutable (cont q) u = inplaceEvalTMV (cont q) (-1) t m v β =<< u_
 -- * No nice rules match. We have to use generic function. But still
 --   let try to reuse temporaries as much as possible
 evalST cont (Add q x y)
