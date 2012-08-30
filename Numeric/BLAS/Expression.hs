@@ -595,6 +595,13 @@ instance BLAS1 a => AddM MV.MVector a where
 instance BLAS1 a => AddM MS.MVector a where
   addM x y = addVecScaled 1 y x
   subM x y = addVecScaled (-1) y x
+instance BLAS1 a => AddM MMatD.MMatrix a where
+  addM x y = do
+    forM_ [0 .. MMat.cols x - 1] $ \i -> do
+      addVecScaled 1 (MMatD.unsafeGetCol y i) (MMatD.unsafeGetCol x i)
+  subM x y = do
+    forM_ [0 .. MMat.cols x - 1] $ \i -> do
+      addVecScaled (-1) (MMatD.unsafeGetCol y i) (MMatD.unsafeGetCol x i)
 
 
 
