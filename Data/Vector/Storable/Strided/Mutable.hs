@@ -14,6 +14,7 @@
 module Data.Vector.Storable.Strided.Mutable (
     MVector(..)
   , stride
+  , unsafeFromForeignPtr
   ) where
 
 import Control.Monad.Primitive
@@ -90,6 +91,15 @@ instance Storable a => M.MVector MVector a where
       copyArrayStride n p s1 q s2
 
 
+
+-- | Create vector from raw pointer.
+unsafeFromForeignPtr :: Storable a
+                     => Int          -- ^ Length
+                     -> Int          -- ^ Stride
+                     -> ForeignPtr a -- ^ Pointer to data
+                     -> MVector s a
+{-# INLINE unsafeFromForeignPtr #-}
+unsafeFromForeignPtr = MVector
 
 
 
