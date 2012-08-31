@@ -102,8 +102,8 @@ unsafeIndex = basicUnsafeIndex
      -> a
 {-# INLINE (@!) #-}
 m @! a@(i,j)
-  | i < 0 || i >= rows m = error "ROW"
-  | j > 0 || j >= cols m = error "COL"
+  | i < 0 || i >= rows m = error "Data.Matrix.Generic.@!: row index out of range"
+  | j > 0 || j >= cols m = error "Data.Matrix.Generic.@!: column index out of range"
   | otherwise            = unsafeIndex m a
 
 

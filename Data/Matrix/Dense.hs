@@ -92,14 +92,14 @@ instance (Storable a, Show a) => Show (Matrix a) where
 getRow :: Storable a => Matrix a -> Int -> V.Vector a
 {-# INLINE getRow #-}
 getRow m i
-  | i < 0 || i >= rows m = error "A"
+  | i < 0 || i >= rows m = error "Data.Matrix.Dense.getRow: row index out of range"
   | otherwise            = unsafeGetRow m i
 
 -- | Get n'th column of matrix as vector.
 getCol :: Storable a => Matrix a -> Int -> V.Vector a
 {-# INLINE getCol #-}
 getCol m i
-  | i < 0 || i >= cols m = error "A"
+  | i < 0 || i >= cols m = error "Data.Matrix.Dense.getRow: column index out of range"
   | otherwise            = unsafeGetColumn m i
 
 -- | Get n'th row of matrix as vector. No range checks performed.
@@ -123,7 +123,7 @@ unsafeGetColumn (Matrix nr _ lda fp) i
 -- | Create matrix from list of columns. All columns must have same
 --   length.
 fromCols :: Storable a => [[a]] -> Matrix a
-fromCols [] = error "AAA"
+fromCols [] = error "Data.Matrix.Dense.fromCols: empty list"
 fromCols columns = runST $ do
   m <- M.new (nRows,nCols)
   forM_   ([0..] `zip` columns) $ \(nc,col) ->
@@ -134,7 +134,7 @@ fromCols columns = runST $ do
     nCols = length columns
     nRows = case group $ map length columns of
               [(n:_)] -> n :: Int
-              _       -> error "MUST BE SAME"
+              _       -> error "Data.Matrix.Dense.fromCols: all columns must have same length"
 
 -- | Create matrix from list of rows. All rows must have same length.
 fromRows :: Storable a => [[a]] -> Matrix a

@@ -619,7 +619,8 @@ instance BLAS1 a => LinSpaceM MMatrix a where
       scaleVector α $ MMatD.unsafeGetCol m i
   {-# INLINE scaleM #-}
   addScaleM α x y
-    | MMat.shape x /= MMat.shape y = error "QWE"
+    | MMat.shape x /= MMat.shape y =
+        error "Numeric.BLAS.Expression[MMatrix].addScaleM: dimensions of matrices don't match"
     | otherwise                    =
         forM_ [0 .. MMat.cols x - 1] $ \i ->
           addVecScaled α (MMatD.unsafeGetCol x i) (MMatD.unsafeGetCol y i)
@@ -630,7 +631,8 @@ instance (BLAS1 a, MMat.IsMMatrix (MSymmetricRaw tag) a) => LinSpaceM (MSymmetri
       scaleVector α $ symColumn m i
   {-# INLINE scaleM #-}
   addScaleM α x y
-    | MMat.shape x /= MMat.shape y = error "QWE"
+    | MMat.shape x /= MMat.shape y =
+        error "Numeric.BLAS.Expression[MSymmetric].addScaleM: dimensions of matrices don't match"
     | otherwise                    =
         forM_ [0 .. MMat.cols x - 1] $ \i ->
           addVecScaled α (symColumn x i) (symColumn y i)

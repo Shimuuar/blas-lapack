@@ -141,8 +141,8 @@ multMV ::(PrimMonad m, MultMV mat a, MVectorBLAS v, BLAS2 a)
        -> m ()
 {-# INLINE multMV #-}
 multMV a m x b y
-  | blasLength x /= M.cols m = error "@@@ 1"
-  | blasLength y /= M.rows m = error "@@@ 2"
+  | blasLength x /= M.cols m = error "Numeric.BLAS.Mutable.multMV: dimensions don't match"
+  | blasLength y /= M.rows m = error "Numeric.BLAS.Mutable.multMV: dimensions don't match"
   | otherwise                = unsafeMultMV a m x b y
 
 -- | Matrix vector multiplication which dows range checking
@@ -158,8 +158,8 @@ multTMV ::(PrimMonad m, MultTMV mat a, MVectorBLAS v, BLAS2 a)
         -> m ()
 {-# INLINE multTMV #-}
 multTMV a t m x b y
-  | blasLength x /= colsT t m = error "multTMV: 1"
-  | blasLength y /= rowsT t m = error "multTMV: 2"
+  | blasLength x /= colsT t m = error "Numeric.BLAS.Mutable.multTMV: dimensions don't match"
+  | blasLength y /= rowsT t m = error "Numeric.BLAS.Mutable.multTMV: dimensions don't match"
   | otherwise                 = unsafeMultTMV a t m x b y
 
 
@@ -174,8 +174,8 @@ crossVV
   => a -> v (PrimState m) a -> v (PrimState m) a -> MD.MMatrix (PrimState m) a -> m ()
 {-# INLINE crossVV #-}
 crossVV a v u m
-  | blasLength v /= M.cols m = error "!"
-  | blasLength u /= M.rows m = error "!"
+  | blasLength v /= M.cols m = error "Numeric.BLAS.Mutable.crossVV: dimensions don't match"
+  | blasLength u /= M.rows m = error "Numeric.BLAS.Mutable.crossVV: dimensions don't match"
   | otherwise                = unsafeCrossVV a v u m
 
 
@@ -187,8 +187,8 @@ crossHVV
   => a -> v (PrimState m) a -> v (PrimState m) a -> MD.MMatrix (PrimState m) a -> m ()
 {-# INLINE crossHVV #-}
 crossHVV a v u m
-  | blasLength v /= M.cols m = error "!"
-  | blasLength u /= M.rows m = error "!"
+  | blasLength v /= M.cols m = error "Numeric.BLAS.Mutable.crossHVV: dimension sized don't match"
+  | blasLength u /= M.rows m = error "Numeric.BLAS.Mutable.crossHVV: dimension sized don't match"
   | otherwise                = unsafeCrossVV a v u m
 
 
@@ -212,9 +212,9 @@ multMM :: (PrimMonad m, BLAS3 a)
        -> m ()
 {-# INLINE multMM #-}
 multMM a ta ma tb mb b mc
-  | rowA /= rowC = error "MM 1"
-  | colB /= colC = error "MM 2"
-  | colA /= rowB = error "MM 3"
+  | rowA /= rowC = error "Numeric.BLAS.Mutable.multMM: dimensions of matrices don't match"
+  | colB /= colC = error "Numeric.BLAS.Mutable.multMM: dimensions of matrices don't match"
+  | colA /= rowB = error "Numeric.BLAS.Mutable.multMM: dimensions of matrices don't match"
   | otherwise    = unsafeMultMM a ta ma tb mb b mc
   where
     rowA = rowsT ta ma ; colA = colsT ta ma
@@ -237,9 +237,9 @@ multSymMM :: (PrimMonad m, BLAS3 a)
           -> m ()
 {-# INLINE multSymMM #-}
 multSymMM side α ma mb β mc
-  | M.rows ma /= M.rows mc = error "!"
-  | M.cols ma /= M.cols mc = error "!"
-  | not okB                = error "!"
+  | M.rows ma /= M.rows mc = error "Numeric.BLAS.Mutable.multSymMM: dimensions of matrices don't match"
+  | M.cols ma /= M.cols mc = error "Numeric.BLAS.Mutable.multSymMM: dimensions of matrices don't match"
+  | not okB                = error "Numeric.BLAS.Mutable.multSymMM: dimensions of matrices don't match"
   | otherwise              = unsafeMultSymMM side α ma mb β mc
   where
     ordB = M.cols mb
@@ -262,9 +262,9 @@ multHerMM :: (PrimMonad m, BLAS3 a, Conjugate a)
           -> m ()
 {-# INLINE multHerMM #-}
 multHerMM side α ma mb β mc
-  | M.rows ma /= M.rows mc = error "!"
-  | M.cols ma /= M.cols mc = error "!"
-  | not okB                = error "!"
+  | M.rows ma /= M.rows mc = error "Numeric.BLAS.Mutable.multSymMM: dimensions of matrices don't match"
+  | M.cols ma /= M.cols mc = error "Numeric.BLAS.Mutable.multSymMM: dimensions of matrices don't match"
+  | not okB                = error "Numeric.BLAS.Mutable.multSymMM: dimensions of matrices don't match"
   | otherwise              = unsafeMultHerMM side α ma mb β mc
   where
     ordB = M.cols mb
