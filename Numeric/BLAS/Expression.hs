@@ -48,9 +48,7 @@ import qualified Data.Matrix.Symmetric           as MatS
 import qualified Data.Matrix.Symmetric.Mutable   as MMatS
 
 import Numeric.BLAS.Mutable
-import Debug.Trace
-
-import GHC.Exts (inline)
+-- import Debug.Trace
 
 
 
