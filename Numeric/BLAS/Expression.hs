@@ -40,12 +40,14 @@ import qualified Data.Vector.Storable.Strided as V
 import qualified Data.Vector.Storable.Mutable         as MS
 import qualified Data.Vector.Storable.Strided.Mutable as MV
 
-import qualified Data.Matrix.Generic         as Mat
-import qualified Data.Matrix.Generic.Mutable as MMat
-import qualified Data.Matrix.Dense           as MatD
-import qualified Data.Matrix.Dense.Mutable   as MMatD
-import qualified Data.Matrix.Symmetric           as MatS
-import qualified Data.Matrix.Symmetric.Mutable   as MMatS
+import qualified Data.Matrix.Generic           as Mat
+import qualified Data.Matrix.Generic.Mutable   as MMat
+import qualified Data.Matrix.Dense.Mutable     as MMatD
+-- import qualified Data.Matrix.Symmetric.Mutable as MMatS
+import Data.Matrix.Dense             (Matrix)
+import Data.Matrix.Dense.Mutable     (MMatrix)
+import Data.Matrix.Symmetric         (SymmetricRaw,Symmetric,Hermitian)
+import Data.Matrix.Symmetric.Mutable (MSymmetricRaw(..),Conjugate,IsSymmetric,IsHermitian)
 
 import Numeric.BLAS.Mutable
 -- import Debug.Trace
@@ -152,10 +154,10 @@ data Expr m a where
          => () -> a -> Expr m a -> Expr m a
   -- vector x transposed vector => matrix
   VecT   :: (Freeze v a, MVectorBLAS (Mutable v), BLAS2 a)
-         => () -> Expr v a -> Expr v a -> Expr MatD.Matrix a
+         => () -> Expr v a -> Expr v a -> Expr Matrix a
   -- vector x conjugate transposed vector => matrix
   VecH   :: (Freeze v a, MVectorBLAS (Mutable v), BLAS2 a)
-         => () -> Expr v a -> Expr v a -> Expr MatD.Matrix a
+         => () -> Expr v a -> Expr v a -> Expr Matrix a
   -- Matrix-vector multiplication
   MulMV  :: ( MultMV (Mutable mat) a
             , MVectorBLAS (Mutable v), G.Vector v a
@@ -177,15 +179,15 @@ data Expr m a where
   -- Matrix-matrix multiplication for dense matrices
   MulMM :: BLAS3 a
         => ()
-        -> Trans -> Expr MatD.Matrix a
-        -> Trans -> Expr MatD.Matrix a
-        -> Expr MatD.Matrix a
+        -> Trans -> Expr Matrix a
+        -> Trans -> Expr Matrix a
+        -> Expr Matrix a
   -- Matrix-matrix multiplication for symmetric and dense matrix
   MulSymMM :: BLAS3 a
-           => () -> Side -> Expr MatS.Symmetric a -> Expr MatD.Matrix a -> Expr MatD.Matrix a
+           => () -> Side -> Expr Symmetric a -> Expr Matrix a -> Expr Matrix a
   -- Matrix-matrix multiplication for symmetric and hermitian matrix
-  MulHerMM :: (BLAS3 a, MMatS.Conjugate a)
-           => () -> Side -> Expr MatS.Hermitian a -> Expr MatD.Matrix a -> Expr MatD.Matrix a
+  MulHerMM :: (BLAS3 a, Conjugate a)
+           => () -> Side -> Expr Hermitian a -> Expr Matrix a -> Expr Matrix a
 
 
 
@@ -395,7 +397,7 @@ floatScale _ = Nothing
 -- Vector-vector^T multiplication
 evalVVT
   :: ( BLAS2 a, MVectorBLAS (Mutable v) )
-  => Cont s -> a -> Expr v a -> Expr v a -> ST s (MMatD.MMatrix s a)
+  => Cont s -> a -> Expr v a -> Expr v a -> ST s (MMatrix s a)
 {-# INLINE evalVVT #-}
 evalVVT cont a v u = do
   v_ <- pull cont v
@@ -407,7 +409,7 @@ evalVVT cont a v u = do
 -- In-place  Vector-vector^T multiplication
 inplaceEvalVVT
   :: ( BLAS2 a, MVectorBLAS (Mutable v) )
-  => Cont s -> a -> Expr v a -> Expr v a -> MMatD.MMatrix s a -> ST s (MMatD.MMatrix s a)
+  => Cont s -> a -> Expr v a -> Expr v a -> MMatrix s a -> ST s (MMatrix s a)
 {-# INLINE inplaceEvalVVT #-}
 inplaceEvalVVT cont a v u m_ = do
   v_ <- pull cont v
@@ -419,7 +421,7 @@ inplaceEvalVVT cont a v u m_ = do
 -- Vector-vector^+ multiplication
 evalVVH
   :: ( BLAS2 a, MVectorBLAS (Mutable v) )
-  => Cont s -> a -> Expr v a -> Expr v a -> ST s (MMatD.MMatrix s a)
+  => Cont s -> a -> Expr v a -> Expr v a -> ST s (MMatrix s a)
 {-# INLINE evalVVH #-}
 evalVVH cont a v u = do
   v_ <- pull cont v
@@ -431,7 +433,7 @@ evalVVH cont a v u = do
 -- In-place  Vector-vector^T multiplication
 inplaceEvalVVH
   :: ( BLAS2 a, MVectorBLAS (Mutable v) )
-  => Cont s -> a -> Expr v a -> Expr v a -> MMatD.MMatrix s a -> ST s (MMatD.MMatrix s a)
+  => Cont s -> a -> Expr v a -> Expr v a -> MMatrix s a -> ST s (MMatrix s a)
 {-# INLINE inplaceEvalVVH #-}
 inplaceEvalVVH cont a v u m_ = do
   v_ <- pull cont v
@@ -490,9 +492,9 @@ inplaceEvalTMV cont α t m v β u_ = do
 
 evalMM :: (BLAS3 a)
        => Cont s -> a
-       -> Trans -> Expr MatD.Matrix a
-       -> Trans -> Expr MatD.Matrix a
-       -> ST s (Mutable MatD.Matrix s a)
+       -> Trans -> Expr Matrix a
+       -> Trans -> Expr Matrix a
+       -> ST s (Mutable Matrix s a)
 {-# INLINE evalMM #-}
 evalMM cont a tm m tn n = do
   m_ <- pull cont m
@@ -503,10 +505,10 @@ evalMM cont a tm m tn n = do
 
 inplaceEvalMM :: (BLAS3 a)
               => Cont s
-              -> a -> Trans -> Expr MatD.Matrix a
-                   -> Trans -> Expr MatD.Matrix a
-              -> a -> Mutable MatD.Matrix s a
-              -> ST s (Mutable MatD.Matrix s a)
+              -> a -> Trans -> Expr Matrix a
+                   -> Trans -> Expr Matrix a
+              -> a -> Mutable Matrix s a
+              -> ST s (Mutable Matrix s a)
 {-# INLINE inplaceEvalMM #-}
 inplaceEvalMM cont α ta mA tb mB β mC_ = do
   mA_ <- pull cont mA
@@ -516,9 +518,9 @@ inplaceEvalMM cont α ta mA tb mB β mC_ = do
 
 evalSymMM :: (BLAS3 a)
        => Cont s -> Side -> a
-       -> Expr MatS.Symmetric a
-       -> Expr MatD.Matrix a
-       -> ST s (Mutable MatD.Matrix s a)
+       -> Expr Symmetric a
+       -> Expr Matrix a
+       -> ST s (Mutable Matrix s a)
 {-# INLINE evalSymMM #-}
 evalSymMM cont side α ma mb = do
   ma_ <- pull cont ma
@@ -529,10 +531,10 @@ evalSymMM cont side α ma mb = do
 
 inplaceEvalSymMM :: (BLAS3 a)
        => Cont s -> Side -> a
-       -> Expr MatS.Symmetric a
-       -> Expr MatD.Matrix a
-       -> a -> Mutable MatD.Matrix s a
-       -> ST s (Mutable MatD.Matrix s a)
+       -> Expr Symmetric a
+       -> Expr Matrix a
+       -> a -> Mutable Matrix s a
+       -> ST s (Mutable Matrix s a)
 {-# INLINE inplaceEvalSymMM #-}
 inplaceEvalSymMM cont side α ma mb β mc_ = do
   ma_ <- pull cont ma
@@ -540,11 +542,11 @@ inplaceEvalSymMM cont side α ma mb β mc_ = do
   multSymMM side α ma_ mb_ β mc_
   return mc_
 
-evalHerMM :: (BLAS3 a, MMatS.Conjugate a)
+evalHerMM :: (BLAS3 a, Conjugate a)
        => Cont s -> Side -> a
-       -> Expr MatS.Hermitian a
-       -> Expr MatD.Matrix a
-       -> ST s (Mutable MatD.Matrix s a)
+       -> Expr Hermitian a
+       -> Expr Matrix a
+       -> ST s (Mutable Matrix s a)
 {-# INLINE evalHerMM #-}
 evalHerMM cont side α ma mb = do
   ma_ <- pull cont ma
@@ -553,12 +555,12 @@ evalHerMM cont side α ma mb = do
   multHerMM side α ma_ mb_ 0 mc_
   return mc_
 
-inplaceEvalHerMM :: (BLAS3 a, MMatS.Conjugate a)
+inplaceEvalHerMM :: (BLAS3 a, Conjugate a)
        => Cont s -> Side -> a
-       -> Expr MatS.Hermitian a
-       -> Expr MatD.Matrix a
-       -> a -> Mutable MatD.Matrix s a
-       -> ST s (Mutable MatD.Matrix s a)
+       -> Expr Hermitian a
+       -> Expr Matrix a
+       -> a -> Mutable Matrix s a
+       -> ST s (Mutable Matrix s a)
 {-# INLINE inplaceEvalHerMM #-}
 inplaceEvalHerMM cont side α ma mb β mc_ = do
   ma_ <- pull cont ma
@@ -587,24 +589,24 @@ instance Storable a => Freeze S.Vector a where
   unsafeThaw   = G.unsafeThaw
 
 
-instance Storable a => Clonable MMatD.MMatrix a where
+instance Storable a => Clonable MMatrix a where
   cloneShape = MMat.cloneShape
   clone      = MMat.clone
-instance Storable a => Freeze MatD.Matrix a where
+instance Storable a => Freeze Matrix a where
   unsafeFreeze = Mat.unsafeFreeze
   unsafeThaw   = Mat.unsafeThaw
 
-instance (Storable a) => Clonable (MMatS.MSymmetricRaw MMatS.IsSymmetric) a where
+instance (Storable a) => Clonable (MSymmetricRaw IsSymmetric) a where
   cloneShape = MMat.cloneShape
   clone      = MMat.clone
-instance Storable a => Freeze (MatS.SymmetricRaw MMatS.IsSymmetric) a where
+instance Storable a => Freeze (SymmetricRaw IsSymmetric) a where
   unsafeFreeze = Mat.unsafeFreeze
   unsafeThaw   = Mat.unsafeThaw
 
-instance (Storable a, MMatS.Conjugate a) => Clonable (MMatS.MSymmetricRaw MMatS.IsHermitian) a where
+instance (Storable a, Conjugate a) => Clonable (MSymmetricRaw IsHermitian) a where
   cloneShape = MMat.cloneShape
   clone      = MMat.clone
-instance (Storable a, MMatS.Conjugate a) => Freeze (MatS.SymmetricRaw MMatS.IsHermitian) a where
+instance (Storable a, Conjugate a) => Freeze (SymmetricRaw IsHermitian) a where
   unsafeFreeze = Mat.unsafeFreeze
   unsafeThaw   = Mat.unsafeThaw
 
@@ -613,11 +615,11 @@ instance BLAS1 a => Scalable MV.MVector a where
   scale = scaleVector
 instance BLAS1 a => Scalable MS.MVector a where
   scale = scaleVector
-instance BLAS1 a => Scalable MMatD.MMatrix a where
+instance BLAS1 a => Scalable MMatrix a where
   scale α m = do
     forM_ [0 .. MMat.cols m - 1] $ \i -> do
       scaleVector α $ MMatD.unsafeGetCol m i
-instance (BLAS1 a, MMat.IsMMatrix (MMatS.MSymmetricRaw tag) a) => Scalable (MMatS.MSymmetricRaw tag) a where
+instance (BLAS1 a, MMat.IsMMatrix (MSymmetricRaw tag) a) => Scalable (MSymmetricRaw tag) a where
   scale α m = do
     forM_   [0 .. n-1] $ \i ->
       forM_ [i .. n-1] $ \j -> do
@@ -631,7 +633,7 @@ instance BLAS1 a => AddM MV.MVector a where
 instance BLAS1 a => AddM MS.MVector a where
   addM x y = addVecScaled 1 y x
   subM x y = addVecScaled (-1) y x
-instance BLAS1 a => AddM MMatD.MMatrix a where
+instance BLAS1 a => AddM MMatrix a where
   addM x y = do
     forM_ [0 .. MMat.cols x - 1] $ \i -> do
       addVecScaled 1 (MMatD.unsafeGetCol y i) (MMatD.unsafeGetCol x i)
