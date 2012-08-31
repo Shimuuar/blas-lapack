@@ -13,8 +13,7 @@
 -- BLAS operations for immutable vectors and matrices.
 module Numeric.BLAS (
     -- * Type class based API
-    Add(..)
-  , Scale(..)
+    LinSpace(..)
   , Mul(..)
   , trans
   , conj
@@ -60,25 +59,18 @@ import Numeric.BLAS.Mutable (MVectorBLAS)
 ----------------------------------------------------------------
 
 -- | Addition for vectors and matrices.
-class Add a where
-  (.+.) :: a -> a -> a
-  (.-.) :: a -> a -> a
+class LinSpace m a where
+  (.+.) :: m a -> m a -> m a
+  (.-.) :: m a -> m a -> m a
+  ( *.) ::   a -> m a -> m a
 
-instance (AddM (Mutable m) a, Freeze m a, Num a, Scalable (Mutable m) a) => Add (m a) where
+instance (LinSpaceM (Mutable m) a, Freeze m a, Num a) => LinSpace m a where
    x .+. y = eval $ Add () (Lit x) (Lit y)
    {-# INLINE (.+.) #-}
    x .-. y = eval $ Sub () (Lit x) (Lit y)
    {-# INLINE (.-.) #-}
-
-
--- | Multiplication by scalar.
-class Scale v a where
-  (*.) :: a -> v a -> v a
-
-instance (Num a, Scalable (Mutable m) a, Freeze m a) => Scale m a where
-  α *. v = eval $ Scale () α (Lit v)
-  {-# INLINE (*.) #-}
-
+   α  *. x = eval $ Scale () α (Lit x)
+   {-# INLINE (*.) #-}
 
 -- | Very overloaded operator for matrix and vector multiplication.
 class Mul v u where
