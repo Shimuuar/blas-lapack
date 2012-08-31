@@ -18,6 +18,7 @@ module Data.Matrix.Generic (
     -- * Accessors
   , rows
   , cols
+  , shape
   , (@!)
   , unsafeIndex
     -- * Converions to/from mutable
@@ -78,6 +79,11 @@ rows = basicRows
 cols :: IsMatrix mat a => mat a -> Int
 {-# INLINE cols #-}
 cols = basicCols
+
+-- | Shape of the matrix.
+shape :: IsMatrix mat a => mat a -> (Int,Int)
+{-# INLINE shape #-}
+shape m = (rows m, cols m)
 
 
 -- | Indexing operator without range checking.

@@ -17,6 +17,7 @@ module Data.Matrix.Generic.Mutable (
     -- * Accesors
   , rows
   , cols
+  , shape
     -- * Reading and writing
   , read
   , write
@@ -79,6 +80,11 @@ rows = basicRows
 cols :: IsMMatrix mat a => mat s a -> Int
 {-# INLINE cols #-}
 cols = basicCols
+
+-- | Shape of the matrix.
+shape :: IsMMatrix mat a => mat s a -> (Int,Int)
+{-# INLINE shape #-}
+shape m = (rows m, cols m)
 
 -- | Whether index could be mutated. E.g. not every element of banded
 --   matrix could be written to. Function need not to check that
