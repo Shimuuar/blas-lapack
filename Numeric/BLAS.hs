@@ -64,7 +64,7 @@ class Add a where
   (.+.) :: a -> a -> a
   (.-.) :: a -> a -> a
 
-instance (AddM (Mutable m) a, Freeze m a) => Add (m a) where
+instance (AddM (Mutable m) a, Freeze m a, Num a, Scalable (Mutable m) a) => Add (m a) where
    x .+. y = eval $ Add () (Lit x) (Lit y)
    {-# INLINE (.+.) #-}
    x .-. y = eval $ Sub () (Lit x) (Lit y)

@@ -5,6 +5,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GADTs            #-}
 {-# LANGUAGE PatternGuards #-}
+{-# LANGUAGE UndecidableInstances #-}
 -- |
 -- Module     : Numeric.BLAS.Expression
 -- Copyright  : Copyright (c) 2012 Aleksey Khudyakov <alexey.skladnoy@gmail.com>
@@ -49,6 +50,7 @@ import qualified Data.Matrix.Symmetric.Mutable   as MMatS
 import Numeric.BLAS.Mutable
 import Debug.Trace
 
+import GHC.Exts (inline)
 
 
 
@@ -145,7 +147,7 @@ data Expr m a where
   Add    :: (Freeze m a, AddM (Mutable m) a)
          => () -> Expr m a -> Expr m a -> Expr m a
   -- Subtraction
-  Sub    :: (Freeze m a, AddM (Mutable m) a)
+  Sub    :: (Freeze m a, AddM (Mutable m) a, Num a, Scalable (Mutable m) a)
          => () -> Expr m a -> Expr m a -> Expr m a
   -- Scalar-X multiplication
   Scale  :: (Freeze m a, Num a, Scalable (Mutable m) a)
@@ -161,13 +163,18 @@ data Expr m a where
             , MVectorBLAS (Mutable v), G.Vector v a
             , BLAS2 a
             , Freeze mat a, Freeze v a
+            , Scalable (Mutable mat) a
+            , Scalable (Mutable v  ) a
             )
          => () -> Expr mat a -> Expr v a -> Expr v a
   -- Transformed matrix-vector multiplication
   MulTMV :: ( MultTMV (Mutable mat) a
             , MVectorBLAS (Mutable v), G.Vector v a
             , BLAS2 a
-            , Freeze mat a, Freeze v a )
+            , Freeze mat a, Freeze v a
+            , Scalable (Mutable mat) a
+            , Scalable (Mutable v  ) a
+            )
          => () -> Trans -> Expr mat a -> Expr v a -> Expr v a
   -- Matrix-matrix multiplication for dense matrices
   MulMM :: BLAS3 a
@@ -203,7 +210,9 @@ eval x = runST $ do
 
 
 
-
+----------------------------------------------------------------
+-- Compilation
+----------------------------------------------------------------
 
 -- Continuation type
 type Cont s = forall v a. Expr v a -> ST s (Mutable v s a)
@@ -215,10 +224,17 @@ type Cont s = forall v a. Expr v a -> ST s (Mutable v s a)
 -- <http://unlines.wordpress.com/2009/11/05/tricking-ghc-into-evaluating-recursive-functions-at-compile-time/>
 evalST :: (() -> Cont s) -> Expr m a -> ST s (Mutable m s a)
 {-# INLINE evalST #-}
--- Reduce double scale.
-evalST cont (Scale q α (Scale _ β e)) = cont q $ Scale () (α*β) e
--- Convert subtraction to addition
+-- Reduce double scale. Double scale may arise inside the Add after
+-- rewrites
+evalST cont (Scale q α (Scale _ β e))           = cont q $ Scale () (α*β) e
+evalST cont (Add _ (Scale _ α (Scale q β x)) y) = cont q $ Add () (Scale () (α * β) x) y
+evalST cont (Add _ x (Scale _ α (Scale q β y))) = cont q $ Add () x (Scale () (α * β) y)
+-- Convert subtraction to addition.
 evalST cont (Sub _ x (Scale q α y)) = cont q $ Add () x (Scale () (-α) y)
+evalST cont (Sub q x            y)  = cont q $ Add () x (Scale () (-1) y)
+-- Float scale to the top
+evalST cont  e          | Just (q,e') <- floatScale e = cont q e'
+evalST cont (Add _ x y) | Just (q,y') <- floatScale y = cont q $ Add () x y'
 --
 --   Addition
 --   ========
@@ -233,54 +249,36 @@ evalST cont (Add _  m            (VecT q v u))  | Just m_ <- mutable (cont q) m 
 evalST cont (Add _  m (Scale _ α (VecT q v u))) | Just m_ <- mutable (cont q) m = inplaceEvalVVT (cont q)   α  v u =<< m_
 evalST cont (Add _  m            (VecH q v u))  | Just m_ <- mutable (cont q) m = inplaceEvalVVH (cont q)   1  v u =<< m_
 evalST cont (Add _  m (Scale _ α (VecH q v u))) | Just m_ <- mutable (cont q) m = inplaceEvalVVH (cont q)   α  v u =<< m_
--- NOTE: A ← α·x·y' + A | for subtraction coefficient α must be negated
-evalST cont (Sub _  m            (VecT q v u))  | Just m_ <- mutable (cont q) m = inplaceEvalVVT (cont q) (-1) v u =<< m_
-evalST cont (Sub _  m            (VecH q v u))  | Just m_ <- mutable (cont q) m = inplaceEvalVVH (cont q) (-1) v u =<< m_
 --
 -- * Matrix x Vector
 evalST cont (Add _            u             (MulMV q m v))  | Just u_ <- mutable (cont q) u = inplaceEvalMV (cont q)   1  m v 1 =<< u_
 evalST cont (Add _            u  (Scale _ α (MulMV q m v))) | Just u_ <- mutable (cont q) u = inplaceEvalMV (cont q)   α  m v 1 =<< u_
 evalST cont (Add _ (Scale _ β u)            (MulMV q m v))  | Just u_ <- mutable (cont q) u = inplaceEvalMV (cont q)   1  m v β =<< u_
 evalST cont (Add _ (Scale _ β u) (Scale _ α (MulMV q m v))) | Just u_ <- mutable (cont q) u = inplaceEvalMV (cont q)   α  m v β =<< u_
--- NOTE: y ← α·A·x + β·y   | for subtraction coefficient α must be negated
-evalST cont (Sub _            u             (MulMV q m v))  | Just u_ <- mutable (cont q) u = inplaceEvalMV (cont q) (-1) m v 1 =<< u_
-evalST cont (Sub _ (Scale _ β u)            (MulMV q m v))  | Just u_ <- mutable (cont q) u = inplaceEvalMV (cont q) (-1) m v β =<< u_
 --
 -- * op(Matrix) x Vector
 evalST cont (Add _            u             (MulTMV q t m v))  | Just u_ <- mutable (cont q) u = inplaceEvalTMV (cont q)   1  t m v 1 =<< u_
 evalST cont (Add _            u  (Scale _ α (MulTMV q t m v))) | Just u_ <- mutable (cont q) u = inplaceEvalTMV (cont q)   α  t m v 1 =<< u_
 evalST cont (Add _ (Scale _ β u)            (MulTMV q t m v))  | Just u_ <- mutable (cont q) u = inplaceEvalTMV (cont q)   1  t m v β =<< u_
 evalST cont (Add _ (Scale _ β u) (Scale _ α (MulTMV q t m v))) | Just u_ <- mutable (cont q) u = inplaceEvalTMV (cont q)   α  t m v β =<< u_
--- NOTE: C ← α·op(A)·op(B) + β·C   | for subtraction coefficient α must be negated
-evalST cont (Sub _            u             (MulTMV q t m v))  | Just u_ <- mutable (cont q) u = inplaceEvalTMV (cont q) (-1) t m v 1 =<< u_
-evalST cont (Sub _ (Scale _ β u)            (MulTMV q t m v))  | Just u_ <- mutable (cont q) u = inplaceEvalTMV (cont q) (-1) t m v β =<< u_
 --
 -- * op(Matrix) x * op(Matrix)
 evalST cont (Add _            u             (MulMM q tm m tn n))  | Just u_ <- mutable (cont q) u = inplaceEvalMM (cont q)   1  tm m tn n 1 =<< u_
 evalST cont (Add _            u  (Scale _ α (MulMM q tm m tn n))) | Just u_ <- mutable (cont q) u = inplaceEvalMM (cont q)   α  tm m tn n 1 =<< u_
 evalST cont (Add _ (Scale _ β u)            (MulMM q tm m tn n))  | Just u_ <- mutable (cont q) u = inplaceEvalMM (cont q)   1  tm m tn n β =<< u_
 evalST cont (Add _ (Scale _ β u) (Scale _ α (MulMM q tm m tn n))) | Just u_ <- mutable (cont q) u = inplaceEvalMM (cont q)   α  tm m tn n β =<< u_
--- Subtraction
-evalST cont (Add _            u             (MulMM q tm m tn n))  | Just u_ <- mutable (cont q) u = inplaceEvalMM (cont q) (-1) tm m tn n 1 =<< u_
-evalST cont (Add _ (Scale _ β u)            (MulMM q tm m tn n))  | Just u_ <- mutable (cont q) u = inplaceEvalMM (cont q) (-1) tm m tn n β =<< u_
 --
 -- * op(Symmetric matrix) x * op(Matrix)
 evalST cont (Add _            u             (MulSymMM q sd m n))  | Just u_ <- mutable (cont q) u = inplaceEvalSymMM (cont q) sd   1  m n 1 =<< u_
 evalST cont (Add _            u  (Scale _ α (MulSymMM q sd m n))) | Just u_ <- mutable (cont q) u = inplaceEvalSymMM (cont q) sd   α  m n 1 =<< u_
 evalST cont (Add _ (Scale _ β u)            (MulSymMM q sd m n))  | Just u_ <- mutable (cont q) u = inplaceEvalSymMM (cont q) sd   1  m n β =<< u_
 evalST cont (Add _ (Scale _ β u) (Scale _ α (MulSymMM q sd m n))) | Just u_ <- mutable (cont q) u = inplaceEvalSymMM (cont q) sd   α  m n β =<< u_
--- Subtraction
-evalST cont (Add _            u             (MulSymMM q sd m n))  | Just u_ <- mutable (cont q) u = inplaceEvalSymMM (cont q) sd (-1) m n 1 =<< u_
-evalST cont (Add _ (Scale _ β u)            (MulSymMM q sd m n))  | Just u_ <- mutable (cont q) u = inplaceEvalSymMM (cont q) sd (-1) m n β =<< u_
 --
 -- * op(Hermitian matrix) x * op(Matrix)
 evalST cont (Add _            u             (MulHerMM q sd m n))  | Just u_ <- mutable (cont q) u = inplaceEvalHerMM (cont q) sd   1  m n 1 =<< u_
 evalST cont (Add _            u  (Scale _ α (MulHerMM q sd m n))) | Just u_ <- mutable (cont q) u = inplaceEvalHerMM (cont q) sd   α  m n 1 =<< u_
 evalST cont (Add _ (Scale _ β u)            (MulHerMM q sd m n))  | Just u_ <- mutable (cont q) u = inplaceEvalHerMM (cont q) sd   1  m n β =<< u_
 evalST cont (Add _ (Scale _ β u) (Scale _ α (MulHerMM q sd m n))) | Just u_ <- mutable (cont q) u = inplaceEvalHerMM (cont q) sd   α  m n β =<< u_
--- Subtraction
-evalST cont (Add _            u             (MulHerMM q sd m n))  | Just u_ <- mutable (cont q) u = inplaceEvalHerMM (cont q) sd (-1) m n 1 =<< u_
-evalST cont (Add _ (Scale _ β u)            (MulHerMM q sd m n))  | Just u_ <- mutable (cont q) u = inplaceEvalHerMM (cont q) sd (-1) m n β =<< u_
 -- * No nice rules match. We have to use generic function. But still
 --   let try to reuse temporaries as much as possible
 evalST cont (Add q x y)
@@ -362,6 +360,32 @@ pull cont x       = cont x
 -- | Worker function
 evalST' :: () -> Expr m a -> ST s (Mutable m s a)
 evalST' _ = evalST evalST'
+
+-- Float scale from constructors up. For example expression tree for
+-- @2 *. mat .*. v@ have form @MulMV (Scale 2 mat) v@ but it's more
+-- convenient to float @Scale@ on the top.
+floatScale :: Expr m a -> Maybe ((), Expr m a)
+{-# INLINE floatScale #-}
+-- Vector x Vector
+floatScale (VecT q (Scale _ α v)            u)  = Just $ (,) q $ Scale ()  α    $ VecT () v u
+floatScale (VecT q            v  (Scale _ α u)) = Just $ (,) q $ Scale ()  α    $ VecT () v u
+floatScale (VecT q (Scale _ α v) (Scale _ β u)) = Just $ (,) q $ Scale () (α*β) $ VecT () v u
+floatScale (VecH q (Scale _ α v)            u)  = Just $ (,) q $ Scale ()  α    $ VecH () v u
+floatScale (VecH q            v  (Scale _ α u)) = Just $ (,) q $ Scale ()  α    $ VecH () v u
+floatScale (VecH q (Scale _ α v) (Scale _ β u)) = Just $ (,) q $ Scale () (α*β) $ VecH () v u
+-- Matrix-vector
+floatScale (MulMV q (Scale _ α m)            v)  = Just $ (,) q $ Scale ()  α    $ MulMV () m v
+floatScale (MulMV q            m  (Scale _ α v)) = Just $ (,) q $ Scale ()  α    $ MulMV () m v
+floatScale (MulMV q (Scale _ α m) (Scale _ β v)) = Just $ (,) q $ Scale () (α*β) $ MulMV () m v
+floatScale (MulTMV q t (Scale _ α m)            v)  = Just $ (,) q $ Scale ()  α    $ MulTMV () t m v
+floatScale (MulTMV q t            m  (Scale _ α v)) = Just $ (,) q $ Scale ()  α    $ MulTMV () t m v
+floatScale (MulTMV q t (Scale _ α m) (Scale _ β v)) = Just $ (,) q $ Scale () (α*β) $ MulTMV () t m v
+-- Matrix-matrix
+floatScale (MulMM q tm (Scale _ α m) tn            n)  = Just $ (,) q $ Scale () α     $ MulMM () tm m tn n
+floatScale (MulMM q tm            m  tn (Scale _ β n)) = Just $ (,) q $ Scale () β     $ MulMM () tm m tn n
+floatScale (MulMM q tm (Scale _ α m) tn (Scale _ β n)) = Just $ (,) q $ Scale () (α*β) $ MulMM () tm m tn n
+-- Cannot float
+floatScale _ = Nothing
 
 
 
@@ -595,7 +619,13 @@ instance BLAS1 a => Scalable MMatD.MMatrix a where
   scale α m = do
     forM_ [0 .. MMat.cols m - 1] $ \i -> do
       scaleVector α $ MMatD.unsafeGetCol m i
-
+instance (BLAS1 a, MMat.IsMMatrix (MMatS.MSymmetricRaw tag) a) => Scalable (MMatS.MSymmetricRaw tag) a where
+  scale α m = do
+    forM_   [0 .. n-1] $ \i ->
+      forM_ [i .. n-1] $ \j -> do
+        MMat.write m (i,j) . (*α) =<< MMat.read m (i,j)
+    where
+      n = MMat.cols m
 
 instance BLAS1 a => AddM MV.MVector a where
   addM x y = addVecScaled   1  y x
