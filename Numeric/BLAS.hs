@@ -10,7 +10,9 @@
 -- Maintainer : Aleksey Khudyakov <alexey.skladnoy@gmail.com>
 -- Stability  : experimental
 --
--- BLAS operations for immutable vectors and matrices.
+-- BLAS operations for immutable vectors and matrices. Current
+-- implementation tries hard to evaluate expression built using
+-- functions from this module with minimal number of BLAS calls.
 module Numeric.BLAS (
     -- * Type class based API
     LinSpace(..)
@@ -58,7 +60,7 @@ import Numeric.BLAS.Mutable (MVectorBLAS)
 -- Type class for addition and multiplication
 ----------------------------------------------------------------
 
--- | Addition for vectors and matrices.
+-- | Addition and multiplication by scalar for vectors and matrices.
 class LinSpace m a where
   (.+.) :: m a -> m a -> m a
   (.-.) :: m a -> m a -> m a
@@ -74,6 +76,7 @@ instance (LinSpaceM (Mutable m) a, Freeze m a, Num a) => LinSpace m a where
 
 -- | Very overloaded operator for matrix and vector multiplication.
 class Mul v u where
+  -- | Result of multiplication,
   type MulRes v u :: *
   (.*.) :: v -> u -> MulRes v u
 
@@ -106,7 +109,7 @@ dotProduct v u = runST $ do
   M.dotProduct mv mu
 
 
--- | hermitian dot product of vectors. For real-valued vectors is same
+-- | Hermitian product of vectors. For real-valued vectors is same
 --   as 'dotProduct'.
 hermitianProd :: (BLAS1 a, Vector v a, MVectorBLAS (Mutable v))
               => v a -> v a -> a

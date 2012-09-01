@@ -1,10 +1,26 @@
 Name:           blas-lapack
 Version:        0.1
-Synopsis:       High level binding to BLAS and LAPACK
+Synopsis:       High level binding to BLAS
 Description:
-  High level binding to BLAS and LAPACK
+  High level binding to BLAS and LAPACK (not implemented yet). BLAS
+  (Basic Linear Algebra Subprograms) are routines that provide
+  standard building blocks for performing basic vector and matrix
+  operations.
+  .
+  Below is general overview of package:
+  .
+  [@Data.*@]
+  Data types for different matrices and another type of vector. API is
+  modelled after @vector@ package.
+  .
+  [@Numeric.BLAS@]
+  API for immutable vectors and matrices.
+  .
+  [@Numeric.BLAS.Mutable.*@]
+  Thin wrapper over BLAS calls. It's not very convenient to use.
 
-Cabal-Version:  >= 1.6
+
+Cabal-Version:  >= 1.8
 License:        BSD3
 License-File:   LICENSE
 Author:         Aleksey Khudyakov <alexey.skladnoy@gmail.com>
@@ -26,7 +42,7 @@ Library
     primitive,
     vector,
     blas-bindings
-  Exposed-modules:      
+  Exposed-modules:
     -- * Data types
     -- Vector
     Data.Vector.Storable.Strided
