@@ -1,0 +1,20 @@
+High level binding to BLAS and LAPACK (not implemented yet). BLAS
+(Basic Linear Algebra Subprograms) are routines that provide
+standard building blocks for performing basic vector and matrix
+operations.
+
+Below is general overview of package:
+
+  ## Data.*
+
+Data types for different matrices and another type of vector. API is
+modelled after @vector@ package.
+
+  ## Numeric.BLAS
+
+API for immutable vectors and matrices.
+
+  ## Numeric.BLAS.Mutable.*
+
+Thin wrapper over BLAS calls. It only insulates from raw pointers.
+Otherwise it's same BLAS.

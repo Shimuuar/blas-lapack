@@ -1,6 +1,6 @@
 Name:           blas-lapack
 Version:        0.1
-Synopsis:       High level binding to BLAS
+Synopsis:       Linear algebra for haskell which uses BLAS.
 Description:
   High level binding to BLAS and LAPACK (not implemented yet). BLAS
   (Basic Linear Algebra Subprograms) are routines that provide
@@ -17,7 +17,8 @@ Description:
   API for immutable vectors and matrices.
   .
   [@Numeric.BLAS.Mutable.*@]
-  Thin wrapper over BLAS calls. It's not very convenient to use.
+  Thin wrapper over BLAS calls. It only insulates from raw pointers.
+  Otherwise it's same BLAS.
 
 
 Cabal-Version:  >= 1.8
