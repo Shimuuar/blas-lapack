@@ -57,6 +57,7 @@ Library
     Data.Matrix.Symmetric.Mutable
     -- High level BLAS interface
     Numeric.BLAS
+    Numeric.BLAS.Expression
     Numeric.BLAS.Mutable
     Numeric.BLAS.Mutable.Unsafe
   Other-modules:
