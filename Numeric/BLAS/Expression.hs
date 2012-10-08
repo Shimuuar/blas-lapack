@@ -359,23 +359,23 @@ evalST' _ = evalST evalST'
 floatScale :: Expr m a -> Maybe ((), Expr m a)
 {-# INLINE floatScale #-}
 -- Vector x Vector
+floatScale (VecT q (Scale _ α v) (Scale _ β u)) = Just $ (,) q $ Scale () (α*β) $ VecT () v u
 floatScale (VecT q (Scale _ α v)            u)  = Just $ (,) q $ Scale ()  α    $ VecT () v u
 floatScale (VecT q            v  (Scale _ α u)) = Just $ (,) q $ Scale ()  α    $ VecT () v u
-floatScale (VecT q (Scale _ α v) (Scale _ β u)) = Just $ (,) q $ Scale () (α*β) $ VecT () v u
+floatScale (VecH q (Scale _ α v) (Scale _ β u)) = Just $ (,) q $ Scale () (α*β) $ VecH () v u
 floatScale (VecH q (Scale _ α v)            u)  = Just $ (,) q $ Scale ()  α    $ VecH () v u
 floatScale (VecH q            v  (Scale _ α u)) = Just $ (,) q $ Scale ()  α    $ VecH () v u
-floatScale (VecH q (Scale _ α v) (Scale _ β u)) = Just $ (,) q $ Scale () (α*β) $ VecH () v u
 -- Matrix-vector
+floatScale (MulMV q (Scale _ α m) (Scale _ β v)) = Just $ (,) q $ Scale () (α*β) $ MulMV () m v
 floatScale (MulMV q (Scale _ α m)            v)  = Just $ (,) q $ Scale ()  α    $ MulMV () m v
 floatScale (MulMV q            m  (Scale _ α v)) = Just $ (,) q $ Scale ()  α    $ MulMV () m v
-floatScale (MulMV q (Scale _ α m) (Scale _ β v)) = Just $ (,) q $ Scale () (α*β) $ MulMV () m v
+floatScale (MulTMV q t (Scale _ α m) (Scale _ β v)) = Just $ (,) q $ Scale () (α*β) $ MulTMV () t m v
 floatScale (MulTMV q t (Scale _ α m)            v)  = Just $ (,) q $ Scale ()  α    $ MulTMV () t m v
 floatScale (MulTMV q t            m  (Scale _ α v)) = Just $ (,) q $ Scale ()  α    $ MulTMV () t m v
-floatScale (MulTMV q t (Scale _ α m) (Scale _ β v)) = Just $ (,) q $ Scale () (α*β) $ MulTMV () t m v
 -- Matrix-matrix
+floatScale (MulMM q tm (Scale _ α m) tn (Scale _ β n)) = Just $ (,) q $ Scale () (α*β) $ MulMM () tm m tn n
 floatScale (MulMM q tm (Scale _ α m) tn            n)  = Just $ (,) q $ Scale () α     $ MulMM () tm m tn n
 floatScale (MulMM q tm            m  tn (Scale _ β n)) = Just $ (,) q $ Scale () β     $ MulMM () tm m tn n
-floatScale (MulMM q tm (Scale _ α m) tn (Scale _ β n)) = Just $ (,) q $ Scale () (α*β) $ MulMM () tm m tn n
 -- Cannot float
 floatScale _ = Nothing
 
